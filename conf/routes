@@ -9,8 +9,6 @@ GET     /                                         controllers.HomeController.ind
 
 GET     /nest                  controllers.NestController.index()
 
-GET     /graphite/nest    controllers.GraphiteController.pushNest
-
 GET     /login                                    controllers.SessionController.loginOnLoad(redirectUrl: String)
 POST    /login                                    controllers.SessionController.loginOnSubmit()
 GET     /logout                                   controllers.SessionController.logoutOnLoad()
