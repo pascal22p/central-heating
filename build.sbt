@@ -100,9 +100,9 @@ lazy val centralHeatingCommand = (project in file("."))
     PlayKeys.playDefaultPort := 9245,
     libraryDependencies ++= LibDependencies.all,
     dependencyOverrides ++= Seq(
-      "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.22.2",
-      "com.fasterxml.jackson.core"    % "jackson-databind"     % "2.22.2",
-      "com.fasterxml.jackson.core"    % "jackson-core"         % "2.22.2",
+      "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.22.3.1",
+      "com.fasterxml.jackson.core"    % "jackson-databind"     % "2.22.3",
+      "com.fasterxml.jackson.core"    % "jackson-core"         % "2.22.3",
       "com.fasterxml.jackson.core"    % "jackson-annotations"  % "2.22"
     ),
     scoverageSettings,
