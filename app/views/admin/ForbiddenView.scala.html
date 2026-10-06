@@ -1,0 +1,10 @@
+@import uk.gov.hmrc.govukfrontend.views.Implicits.*
+
+@this(main: Main)
+
+@()(implicit request: AuthenticatedRequest[?], messages: Messages)
+
+@main(None) {
+  <h2 class="govuk-heading-m">Forbidden</h2>
+  <p class="govuk-body">The current credential os not allowed to access this page.</p>
+}

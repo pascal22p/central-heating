@@ -1,0 +1,5 @@
+
+GET     /                                   controllers.admin.AdminController.index
+
+GET     /nest/authorize        controllers.admin.NestAdminController.authorize()
+GET     /nest/oauth/callback   controllers.admin.NestAdminController.oauthCallback(code: String, state: String)

@@ -1,0 +1,176 @@
+@import models.AuthenticatedRequest
+@import views.html.components.Block
+@import uk.gov.hmrc.hmrcfrontend.config.AssetsConfig
+@import uk.gov.hmrc.hmrcfrontend.views.html.components._
+@import config.AppConfig
+
+@this(
+        appConfig: AppConfig,
+        assetConfig: AssetsConfig,
+        govukServiceNavigation: GovukServiceNavigation,
+        hmrcTimeoutDialog: HmrcTimeoutDialog
+)
+
+
+@(
+        caption: Option[String] = None,
+        extraHeaders: Seq[Html] = Seq.empty
+)(contentBlock: Html)(implicit authenticatedRequest: AuthenticatedRequest[?], messages: Messages)
+
+@timeoutDialog = {
+@hmrcTimeoutDialog(TimeoutDialog(
+    timeout = Some(900),
+    countdown = Some(2),
+    signOutUrl = Some(controllers.routes.SessionController.logoutOnLoad().url),
+    keepAliveUrl = Some("#"),
+    signOutButtonText = Some("Log out")
+))
+}
+
+@loginOrlogoutUrl = @{
+    if(authenticatedRequest.localSession.sessionData.userData.isEmpty) {
+        controllers.routes.SessionController.loginOnLoad(authenticatedRequest.request.uri).url
+    } else {
+        controllers.routes.SessionController.logoutOnLoad().url
+    }
+}
+
+@loginOrlogoutText = @{
+    if(authenticatedRequest.localSession.sessionData.userData.isEmpty) {
+        messages("Login")
+    } else {
+        messages("Logout")
+    }
+}
+
+<!DOCTYPE html>
+<html lang="@messages.lang.code" class="govuk-template">
+    <head>
+        <title>parois.net - Central Heating Management</title>
+        <meta name="Description" content="" />
+        <meta name="Author" content="Pascal Parois" />
+        <meta http-equiv="Content-language" content="@messages.lang.code" />
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#0b0c0c">
+
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@@0,100..900;1,100..900&display=swap" rel="stylesheet">
+
+        <link rel="stylesheet" media="screen" href="@assetConfig.hmrcFrontendCssUrl">
+        <script type="module" src="@{assetConfig.hmrcFrontendJsUrl}"></script>
+        <link rel="stylesheet" media="screen" href="@routes.Assets.versioned("stylesheets/main.css")">
+
+        @if(authenticatedRequest.request.uri.contains(controllers.routes.SessionController.loginOnLoad("").path.takeWhile(_ != '?'))) {
+            <link rel="canonical" href="@authenticatedRequest.request.host@controllers.routes.SessionController.loginOnLoad("").path.takeWhile(_ != '?')">
+            <meta name="robots" content="noindex">
+        }
+
+        @if(authenticatedRequest.localSession.sessionData.userData.isDefined){
+            @timeoutDialog
+        }
+
+        @for(header <- extraHeaders) {
+            @header
+        }
+
+    </head>
+    <body class="govuk-frontend-supported">
+        <header class="govuk-header" data-module="govuk-header">
+            <div class="govuk-header__container govuk-heading-m">
+                <div class="govuk-grid-row">
+                    <div class="govuk-grid-column-full">
+                        <div class="govuk-width-container">
+                            <div class="govuk-grid-column-one-half" style=" padding-left:0">
+                                <a class="govuk-link--no-underline govuk-link--no-visited-state" style="color:white" href="/">Parois.net - Uk fuel prices</a>
+                            </div>
+                            <div class="govuk-grid-column-one-half" style="display: flex; justify-content: flex-end;padding-right:0">
+                                <a class="govuk-link hmrc-sign-out-nav__link govuk-!-text-align-right" href="@loginOrlogoutUrl">
+                                @loginOrlogoutText
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="govuk-grid-row">
+                <div class="govuk-grid-column-full">
+                @govukServiceNavigation(ServiceNavigation(
+                    serviceName = None,
+                    serviceUrl = Some("/"),
+                    navigation =
+                        Seq(ServiceNavigationItem(
+                            content = Text("Admin"),
+                            href = controllers.admin.routes.AdminController.index.url,
+                            active = false,
+                            current = false,
+                            classes = "",
+                            attributes = Map.empty
+                        )),
+                    navigationClasses = "",
+                    navigationId = "navigation",
+                    navigationLabel = Some("navigationLabel"),
+                    classes = "hmrc-service-navigation--with-language-select",
+                    attributes = Map.empty,
+                    ariaLabel = None,
+                    menuButtonText = Some(messages("Menu")),
+                    menuButtonLabel = Some(messages("Menu")),
+                    slots = None
+                ))
+                </div>
+            </div>
+
+        </header>
+
+        <main class="govuk-main-wrapper">
+            <div class="govuk-width-container">
+                <div class="hmrc-page-heading ">
+                    <h1 id="pageHeading" class="govuk-heading-l govuk-!-margin-bottom-3">
+                        @for(c <-caption) {
+                            <span class="govuk-caption-l">@c</span>
+                        }
+                        @messages("h1.title")
+                    </h1>
+                </div>
+
+                <div class="govuk-grid-row">
+                    <div class="govuk-grid-column-full box" id="main-content">
+                    @contentBlock
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="govuk-footer">
+            <div class="govuk-width-container">
+                <div class="govuk-footer__meta">
+                    <div class="govuk-footer__meta-item">
+                        <ul class="govuk-footer__list">
+                            <li class="govuk-footer__list-item">
+                        <a class="govuk-footer__link" href="mailto:pascal22p@("@")parois.net">Pascal Parois</a>
+                            </li>
+                            <li class="govuk-footer__list-item">
+                                <a class="govuk-footer__link" href="https://github.com/pascal22p/uk-fuel-prices/">
+                                    On github
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="govuk-footer__meta-item govuk-footer__meta-item--grow">
+                        <ul class="govuk-footer__list">
+                            <li class="govuk-footer__list-item">
+                                Version @{appConfig.commitHash}
+                            </li>
+                            <li class="govuk-footer__list-item">
+                                Session: @{authenticatedRequest.localSession.sessionId}
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </footer>
+
+    </body>
+</html>

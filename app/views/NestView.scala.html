@@ -1,0 +1,116 @@
+@import models.NestDevice
+@import uk.gov.hmrc.govukfrontend.views.Implicits.*
+@import uk.gov.hmrc.govukfrontend.views.html.components.SummaryListRow
+
+@this(
+  main: Main,
+  govukSummaryList: GovukSummaryList
+)
+
+
+@(device: NestDevice)(implicit authenticatedRequest: AuthenticatedRequest[?], messages: Messages)
+
+@main() {
+
+  <h1 class="govuk-heading-xl">Nest thermostat</h1>
+
+  <p class="govuk-body">
+    Current state and sensor readings from your Nest thermostat.
+  </p>
+
+  @govukSummaryList(
+    SummaryList(
+      rows = Seq(
+        SummaryListRow(
+          key = Key(Text("Device")),
+          value = Value(Text(device.name))
+        ),
+        SummaryListRow(
+          key = Key(Text("Status")),
+          value = Value(Text(
+            device.traits.connectivity.getOrElse("Unknown")
+          ))
+        ),
+        SummaryListRow(
+          key = Key(Text("Temperature")),
+          value = Value(Text(
+            device.traits.temperatureCelsius
+              .map(value => f"$value%.1f °C")
+              .getOrElse("Unknown")
+          ))
+        ),
+        SummaryListRow(
+          key = Key(Text("Humidity")),
+          value = Value(Text(
+            device.traits.humidityPercent
+              .map(value => f"$value%.0f%%")
+              .getOrElse("Unknown")
+          ))
+        ),
+        SummaryListRow(
+          key = Key(Text("Mode")),
+          value = Value(Text(
+            device.traits.thermostatMode.getOrElse("Unknown")
+          ))
+        ),
+        SummaryListRow(
+          key = Key(Text("HVAC")),
+          value = Value(Text(
+            device.traits.hvacStatus.getOrElse("Unknown")
+          ))
+        ),
+        SummaryListRow(
+          key = Key(Text("Heat setpoint")),
+          value = Value(Text(
+            device.traits.heatSetpointCelsius
+              .map(value => f"$value%.1f °C")
+              .getOrElse("Not set")
+          ))
+        ),
+        SummaryListRow(
+          key = Key(Text("Cool setpoint")),
+          value = Value(Text(
+            device.traits.coolSetpointCelsius
+              .map(value => f"$value%.1f °C")
+              .getOrElse("Not set")
+          ))
+        ),
+        SummaryListRow(
+          key = Key(Text("Eco mode")),
+          value = Value(Text(
+            device.traits.ecoMode.getOrElse("Unknown")
+          ))
+        ),
+        SummaryListRow(
+          key = Key(Text("Eco heat")),
+          value = Value(Text(
+            device.traits.ecoHeatCelsius
+              .map(value => f"$value%.1f °C")
+              .getOrElse("Not set")
+          ))
+        ),
+        SummaryListRow(
+          key = Key(Text("Eco cool")),
+          value = Value(Text(
+            device.traits.ecoCoolCelsius
+              .map(value => f"$value%.1f °C")
+              .getOrElse("Not set")
+          ))
+        ),
+        SummaryListRow(
+          key = Key(Text("Fan")),
+          value = Value(Text(
+            device.traits.fanTimerMode.getOrElse("Unknown")
+          ))
+        ),
+        SummaryListRow(
+          key = Key(Text("Fan timeout")),
+          value = Value(Text(
+            device.traits.fanTimerTimeout.getOrElse("Not set")
+          ))
+        )
+      )
+    )
+  )
+
+}
