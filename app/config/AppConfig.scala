@@ -30,4 +30,12 @@ class AppConfig @Inject() (configuration: Configuration) {
   lazy val nestRedirectUri: String =
     configuration.get[String]("microservice.services.nest.redirect-uri")
 
+  lazy val nestApiHost: String =
+    configuration.get[String]("microservice.services.nest.api-host")
+
+  lazy val googleTokenHost: String =
+    configuration.get[String]("microservice.services.nest.google-token-host")
+
+  lazy val nestAuthHost: String =
+    configuration.get[String]("microservice.services.nest.auth-host")
 }

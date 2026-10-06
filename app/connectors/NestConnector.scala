@@ -23,15 +23,6 @@ class NestConnector @Inject() (
     nestAuthorisationQueries: NestAuthorisationQueries
 )(implicit ec: ExecutionContext) {
 
-  private val nestApiHost =
-    "https://smartdevicemanagement.googleapis.com"
-
-  private val googleTokenHost =
-    "https://oauth2.googleapis.com"
-
-  private val nestAuthHost =
-    "https://nestservices.google.com"
-
   private val scope =
     "https://www.googleapis.com/auth/sdm.service"
 
@@ -66,7 +57,7 @@ class NestConnector @Inject() (
       }
       .mkString("&")
 
-    s"$nestAuthHost/partnerconnections/${appConfig.nestProjectId}/auth?$query"
+    s"${appConfig.nestAuthHost}/partnerconnections/${appConfig.nestProjectId}/auth?$query"
   }
 
   def handleCallback(code: String, state: String)(
@@ -100,7 +91,7 @@ class NestConnector @Inject() (
 
     EitherT(
       http
-        .post(url"$googleTokenHost/token")
+        .post(url"${appConfig.googleTokenHost}/token")
         .withBody(formData)
         .execute[Either[UpstreamErrorResponse, HttpResponse]]
     )
@@ -169,7 +160,7 @@ class NestConnector @Inject() (
 
     EitherT(
       http
-        .post(url"$googleTokenHost/token")
+        .post(url"${appConfig.googleTokenHost}/token")
         .withBody(formData)
         .execute[Either[UpstreamErrorResponse, HttpResponse]]
     )
@@ -213,7 +204,7 @@ class NestConnector @Inject() (
   def getDevice()(implicit hc: HeaderCarrier): EitherT[Future, UpstreamErrorResponse, NestDevice] = {
     getValidToken().flatMap { accessToken =>
       val path = s"/v1/enterprises/${appConfig.nestProjectId}/devices/${appConfig.nestDeviceId}"
-      val url  = s"$nestApiHost$path"
+      val url  = s"${appConfig.nestApiHost}$path"
 
       EitherT(
         http
@@ -233,4 +224,7 @@ class NestConnector @Inject() (
     URLEncoder
       .encode(value, StandardCharsets.UTF_8)
       .replace("+", "%20")
+
+  private[connectors] def clearToken(): Unit =
+    token = None
 }
