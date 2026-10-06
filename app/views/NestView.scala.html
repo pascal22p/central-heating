@@ -18,6 +18,15 @@
     Current state and sensor readings from your Nest thermostat.
   </p>
 
+  <p class="govuk-body">
+    <a
+      class="govuk-button"
+      href="@routes.GraphiteController.pushNest"
+    >
+      Push data to Graphite
+    </a>
+  </p>
+
   @govukSummaryList(
     SummaryList(
       rows = Seq(

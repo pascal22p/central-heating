@@ -40,4 +40,13 @@ class AppConfig @Inject() (configuration: Configuration) {
 
   lazy val nestAuthHost: String =
     configuration.get[String]("microservice.services.nest.auth-host")
+
+  lazy val graphiteHost: String =
+    configuration.get[String]("microservice.services.graphite.host")
+
+  lazy val graphitePort: Int =
+    configuration.get[Int]("microservice.services.graphite.port")
+
+  lazy val graphitePrefix: String =
+    configuration.get[String]("microservice.services.graphite.prefix")
 }
