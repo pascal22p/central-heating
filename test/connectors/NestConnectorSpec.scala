@@ -66,7 +66,7 @@ class NestConnectorSpec extends BaseSpec with WireMockHelper with ScalaFutures {
       .thenReturn(s"http://localhost:${server.port}")
 
     when(mockAppConfig.nestAuthHost)
-      .thenReturn(s"http://localhost:${server.port}")
+      .thenReturn(s"http://localhost:${server.port}"): Unit
   }
 
   "authorizationUrl" must {

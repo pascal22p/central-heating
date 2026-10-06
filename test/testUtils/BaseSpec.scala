@@ -1,6 +1,5 @@
 package testUtils
 
-import java.time.Instant
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.test.Injecting
 import play.api.Application
@@ -12,7 +11,6 @@ import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import org.scalatestplus.play.PlaySpec
 
 import config.JobSchedulerModule
-import models.*
 
 trait BaseSpec
     extends PlaySpec

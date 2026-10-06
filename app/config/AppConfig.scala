@@ -2,8 +2,10 @@ package config
 
 import javax.inject.Inject
 import play.api.Configuration
+import scala.annotation.unused
 
 class AppConfig @Inject() (configuration: Configuration) {
+  @unused
   private def baseUrl(serviceName: String): String = {
     val servicesRoot = "microservice.services"
     val protocol     = configuration.getOptional[String](s"$servicesRoot.$serviceName.protocol").getOrElse("http")

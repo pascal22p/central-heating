@@ -1,6 +1,6 @@
 package models
 
-import play.api.libs.json.{ Json, Reads }
+import play.api.libs.json.Reads
 
 final case class NestDevice(
     name: String,
