@@ -1,13 +1,12 @@
 package connectors
 
-import java.io.{ BufferedWriter, OutputStreamWriter }
-import java.net.Socket
+import java.io.{BufferedWriter, OutputStreamWriter}
+import java.net.{InetSocketAddress, Socket}
 import java.nio.charset.StandardCharsets
 import javax.inject.Inject
-import scala.concurrent.{ ExecutionContext, Future }
-
+import scala.concurrent.{ExecutionContext, Future}
 import config.AppConfig
-import models.{ LoggingWithRequest, NestDevice }
+import models.{LoggingWithRequest, NestDevice}
 
 class GraphiteConnector @Inject() (
     appConfig: AppConfig
@@ -55,11 +54,16 @@ class GraphiteConnector @Inject() (
           s"Sending ${metrics.size} metrics to Graphite at ${appConfig.graphiteHost}:${appConfig.graphitePort}"
         )
 
-        val socket = new Socket(
-          appConfig.graphiteHost,
-          appConfig.graphitePort
+        val socket = new Socket()
+        socket.setSoTimeout(appConfig.graphiteReadTimeoutMs)
+        socket.connect(
+          new InetSocketAddress(
+            appConfig.graphiteHost,
+            appConfig.graphitePort
+          ),
+          appConfig.graphiteConnectTimeoutMs
         )
-
+        
         try {
           val writer = new BufferedWriter(
             new OutputStreamWriter(

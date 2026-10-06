@@ -49,4 +49,14 @@ class AppConfig @Inject() (configuration: Configuration) {
 
   lazy val graphitePrefix: String =
     configuration.get[String]("microservice.services.graphite.prefix")
+
+  lazy val graphiteConnectTimeoutMs: Int =
+    configuration.get[Int](
+      "microservice.services.graphite.connect-timeout-ms"
+    )
+
+  lazy val graphiteReadTimeoutMs: Int =
+    configuration.get[Int](
+      "microservice.services.graphite.read-timeout-ms"
+    )
 }
