@@ -1,7 +1,6 @@
 package actions
 
 import java.time.LocalDateTime
-import java.util.UUID
 import javax.inject.Inject
 import play.api.mvc.*
 import play.api.MarkerContext
@@ -9,7 +8,7 @@ import scala.concurrent.{ ExecutionContext, Future }
 
 import com.google.inject.ImplementedBy
 
-import models.{ AuthenticatedRequest, LoggingWithRequest, Session, SessionData }
+import models.{ Attrs, AuthenticatedRequest, LoggingWithRequest, Session, SessionData }
 import queries.SessionSqlQueries
 
 class AuthActionImpl @Inject() (
@@ -23,9 +22,12 @@ class AuthActionImpl @Inject() (
   protected override val executionContext: ExecutionContext = cc.executionContext
 
   override def invokeBlock[A](request: Request[A], block: AuthenticatedRequest[A] => Future[Result]): Future[Result] = {
-    @SuppressWarnings(Array("org.wartremover.warts.ToString"))
-    val uuid      = UUID.randomUUID().toString
-    val sessionId = request.session.get("sessionId").getOrElse(uuid)
+    val sessionId =
+      request.attrs
+        .get(Attrs.SessionId)
+        .getOrElse {
+          throw new IllegalStateException("Session ID missing from request")
+        }
 
     logger.info(s"AuthAction with session ID: $sessionId")
 

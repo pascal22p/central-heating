@@ -9,6 +9,7 @@ import scala.concurrent.{ ExecutionContext, Future }
 
 import actions.AuthAction
 import models.forms.UserDataForm
+import models.LoggingWithRequest
 import queries.SessionSqlQueries
 import services.LoginService
 import views.html.Login
@@ -23,7 +24,8 @@ class SessionController @Inject() (
 )(
     implicit ec: ExecutionContext
 ) extends BaseController
-    with I18nSupport {
+    with I18nSupport
+    with LoggingWithRequest {
 
   def loginOnLoad(redirectUrl: String): Action[AnyContent] = authAction.async { implicit authenticatedRequest =>
     Future.successful(Ok(loginView(UserDataForm.userForm.fill(UserDataForm("", "", redirectUrl)))))
@@ -55,11 +57,22 @@ class SessionController @Inject() (
   }
 
   def logoutOnLoad: Action[AnyContent] = authAction.async { implicit authenticatedRequest =>
-    sqlQueries.removeSessionData(authenticatedRequest.localSession)
-    val returnUrl =
-      new java.net.URI(
-        authenticatedRequest.request.headers.get(HeaderNames.REFERER).getOrElse(routes.HomeController.index().url)
-      ).getPath
-    Future.successful(Redirect(returnUrl))
+    sqlQueries
+      .removeSessionData(authenticatedRequest.localSession)
+      .map { _ =>
+        val returnUrl =
+          new java.net.URI(
+            authenticatedRequest.request.headers.get(HeaderNames.REFERER).getOrElse(routes.HomeController.index().url)
+          ).getPath
+        Redirect(returnUrl)
+      }
+      .recover {
+        case ex =>
+          logger.error(
+            s"Failed to remove session ${authenticatedRequest.localSession.sessionId} during logout",
+            ex
+          )
+          InternalServerError("Unable to log out")
+      }
   }
 }

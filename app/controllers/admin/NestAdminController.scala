@@ -8,7 +8,7 @@ import scala.concurrent.ExecutionContext
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.http.HeaderCarrierConverter
 
-import actions.{ AuthAction, AuthJourney }
+import actions.AuthJourney
 import connectors.NestConnector
 import views.html.NestView
 
