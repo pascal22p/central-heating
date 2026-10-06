@@ -14,7 +14,7 @@ object LibDependencies {
     "uk.gov.hmrc"              %% "http-verbs-play-30"      % "15.8.0",
     "org.apache.pekko"         %% "pekko-actor"             % play.core.PlayVersion.pekkoVersion,
     "net.sf.geographiclib"     % "GeographicLib-Java"       % "2.1",
-    "io.opentelemetry.instrumentation" % "opentelemetry-instrumentation-annotations" % "2.31.1"
+    "io.opentelemetry.instrumentation" % "opentelemetry-instrumentation-annotations" % "2.32.0"
   )
 
   val libraryDependenciesTest: Seq[ModuleID] = Seq(
