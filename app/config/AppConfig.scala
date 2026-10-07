@@ -74,4 +74,24 @@ class AppConfig @Inject() (configuration: Configuration) {
     configuration.get[String](
       "microservice.services.mqtt.topic"
     )
+
+  lazy val nestSchedulerIsEnabled: Boolean =
+    configuration.get[Boolean](
+      "scheduler.nest.isEnabled"
+    )
+
+  lazy val nestSchedulerStartDelayInSeconds: Int =
+    configuration.get[Int](
+      "scheduler.nest.startDelayInSeconds"
+    )
+
+  lazy val nestSchedulerIntervalInSeconds: Int =
+    configuration.get[Int](
+      "scheduler.nest.intervalInSeconds"
+    )
+
+  lazy val nestSchedulerTimeoutInSeconds: Int =
+    configuration.get[Int](
+      "scheduler.nest.timeoutInSeconds"
+    )
 }

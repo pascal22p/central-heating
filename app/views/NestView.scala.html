@@ -27,6 +27,18 @@
     </a>
   </p>
 
+  <p class="govuk-body">
+    <a class="govuk-button" href="@controllers.admin.routes.NestAdminController.setTemperature(15)">
+      Set temperature to 15°C
+    </a>
+  </p>
+
+  <p class="govuk-body">
+    <a class="govuk-button" href="@controllers.admin.routes.NestAdminController.setTemperature(22)">
+      Set temperature to 22°C
+    </a>
+  </p>
+
   @govukSummaryList(
     SummaryList(
       rows = Seq(

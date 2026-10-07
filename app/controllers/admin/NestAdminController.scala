@@ -36,6 +36,19 @@ class NestAdminController @Inject() (
     }
   }
 
+  def setTemperature(temperature: Double): Action[AnyContent] = authAction.authWithAdminRight.async {
+    implicit authenticatedRequest =>
+      implicit val hc: HeaderCarrier =
+        HeaderCarrierConverter.fromRequestAndSession(authenticatedRequest, authenticatedRequest.session)
+
+      nestConnector
+        .setTemperature(temperature)
+        .fold(
+          error => InternalServerError(error.message),
+          _ => Ok("Temperature set successfully")
+        )
+  }
+
   def authorize(): Action[AnyContent] = authAction.authWithAdminRight {
     Redirect(
       nestConnector.authorizationUrl()
