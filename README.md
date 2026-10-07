@@ -60,7 +60,7 @@ All settings in `conf/application.conf` can be customized via environment variab
 | `IS_SESSION_SECURE` | Set `true` to restrict session cookies to HTTPS | `false` | `play.http.session.secure` |
 | `PLAY_FILTERS_HOSTS` | Allowed hostnames for the Host filter | `localhost:9245` | `allowedHost` |
 | `PROTOCOL` | Protocol used for absolute URL construction | `http://` | `protocol` |
-| `DB_URL` | JDBC database connection URL | `jdbc:mariadb://localhost:3306/central_heating?createDatabaseIfNotExist=true` | `db.default.url` |
+| `DB_URL` | JDBC database connection URL | `jdbc:mariadb://localhost:3306/central_heating?createDatabaseIfNotExist=true` | `db.default.url` | <!-- trufflehog:ignore -->
 | `DB_USER` | Database username | `root` | `db.default.username` |
 | `DB_PASSWORD` | Database password | `example` | `db.default.password` |
 | `NEST_CLIENT_ID` | Google OAuth 2.0 Client ID for Nest SDM | _None_ | `microservice.services.nest.client-id` |
