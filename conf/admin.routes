@@ -3,3 +3,5 @@ GET     /                                   controllers.admin.AdminController.in
 
 GET     /nest/authorize        controllers.admin.NestAdminController.authorize()
 GET     /nest/oauth/callback   controllers.admin.NestAdminController.oauthCallback(code: String, state: String)
+
+GET     /graphite/nest    controllers.admin.GraphiteController.pushNest
