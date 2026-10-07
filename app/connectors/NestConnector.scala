@@ -4,6 +4,7 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import javax.inject.*
 import play.api.libs.json.*
+import play.api.libs.ws.writeableOf_JsValue
 import play.api.libs.ws.WSBodyWritables.writeableOf_urlEncodedForm
 import scala.concurrent.{ ExecutionContext, Future }
 
@@ -217,6 +218,38 @@ class NestConnector @Inject() (
         .map { response =>
           response.json.as[NestDevice]
         }
+    }
+  }
+
+  def setTemperature(
+      temperatureCelsius: Double
+  )(implicit hc: HeaderCarrier): EitherT[Future, UpstreamErrorResponse, Unit] = {
+
+    getValidToken().flatMap { accessToken =>
+      val path =
+        s"/v1/enterprises/${appConfig.nestProjectId}/devices/${appConfig.nestDeviceId}:executeCommand"
+
+      val url =
+        s"${appConfig.nestApiHost}$path"
+
+      val body = Json.obj(
+        "command" -> "sdm.devices.commands.ThermostatTemperatureSetpoint.SetHeat",
+        "params"  -> Json.obj(
+          "heatCelsius" -> temperatureCelsius
+        )
+      )
+
+      EitherT(
+        http
+          .post(url"$url")
+          .setHeader(
+            "Authorization" -> s"Bearer $accessToken"
+          )
+          .withBody(body)
+          .execute[Either[UpstreamErrorResponse, HttpResponse]]
+      ).map { _ =>
+        ()
+      }
     }
   }
 
