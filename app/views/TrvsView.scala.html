@@ -1,0 +1,178 @@
+@import models.Trv
+
+@this(
+  main: Main
+)
+
+@(trvs: Seq[Trv])(implicit authenticatedRequest: AuthenticatedRequest[?], messages: Messages)
+
+@main() {
+  <div class="govuk-width-container">
+    <main class="govuk-main-wrapper" id="main-content">
+
+      <div class="govuk-grid-row">
+        <div class="govuk-grid-column-two-thirds">
+
+          <h1 class="govuk-heading-xl">TRVs</h1>
+
+        @if(trvs.isEmpty) {
+          <div class="govuk-inset-text">
+            No TRV state has been received yet.
+          </div>
+        } else {
+          <p class="govuk-body">
+            @trvs.size TRV@if(trvs.size != 1) {s} currently reporting.
+          </p>
+        }
+
+        </div>
+      </div>
+
+    @for(trv <- trvs.sortBy(_.name)) {
+      <div class="govuk-summary-card">
+        <div class="govuk-summary-card__title-wrapper">
+          <h2 class="govuk-summary-card__title">
+            @trv.name
+          </h2>
+        </div>
+
+        <div class="govuk-summary-card__content">
+
+          <dl class="govuk-summary-list">
+
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">
+                Temperature
+              </dt>
+              <dd class="govuk-summary-list__value">
+                @String.format("%.1f °C", trv.localTemperature)
+              </dd>
+            </div>
+
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">
+                Temperature Calibration
+              </dt>
+              <dd class="govuk-summary-list__value">
+                @String.format("%.1f °C", trv.localTemperatureCalibration)
+              </dd>
+            </div>
+
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">
+                Setpoint
+              </dt>
+              <dd class="govuk-summary-list__value">
+                @String.format("%.1f °C", trv.occupiedHeatingSetpoint)
+              </dd>
+            </div>
+
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">
+                External temperature input
+              </dt>
+              <dd class="govuk-summary-list__value">
+                @trv.externalTemperatureInput
+              </dd>
+            </div>
+
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">
+                Running state
+              </dt>
+              <dd class="govuk-summary-list__value">
+                <span style="@if(trv.runningState == RunningState.Heat) { color: #d4351c; font-weight: 700; }">
+                  @trv.runningState
+                </span>
+              </dd>
+            </div>
+
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">
+                System mode
+              </dt>
+              <dd class="govuk-summary-list__value">
+                @trv.systemMode
+              </dd>
+            </div>
+
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">
+                Temperature sensor selection
+              </dt>
+              <dd class="govuk-summary-list__value">
+                @trv.temperatureSensorSelection
+              </dd>
+            </div>
+
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">
+                Battery
+              </dt>
+              <dd class="govuk-summary-list__value">
+                @trv.battery%
+              </dd>
+            </div>
+
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">
+                Heat percentage hour
+              </dt>
+              <dd class="govuk-summary-list__value">
+                @trv.heatPercentageHour%
+              </dd>
+            </div>
+
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">
+                Link quality
+              </dt>
+              <dd class="govuk-summary-list__value">
+                @trv.linkQuality
+              </dd>
+            </div>
+
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">
+                Open window
+              </dt>
+              <dd class="govuk-summary-list__value">
+              @if(trv.openWindowDetected) {
+                <strong class="govuk-tag govuk-tag--red">
+                  Detected
+                </strong>
+              } else {
+                <strong class="govuk-tag govuk-tag--green">
+                  No
+                </strong>
+              }
+              </dd>
+            </div>
+
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">
+                Child lock
+              </dt>
+              <dd class="govuk-summary-list__value">
+                @trv.childLock
+              </dd>
+            </div>
+
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">
+                Smart temperature control
+              </dt>
+              <dd class="govuk-summary-list__value">
+                @trv.smartTemperatureControl
+              </dd>
+            </div>
+
+          </dl>
+
+        </div>
+      </div>
+    }
+
+    </main>
+  </div>
+}

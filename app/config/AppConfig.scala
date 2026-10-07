@@ -59,4 +59,19 @@ class AppConfig @Inject() (configuration: Configuration) {
     configuration.get[Int](
       "microservice.services.graphite.read-timeout-ms"
     )
+
+  lazy val mqttBrokerUrl: String =
+    configuration.get[String](
+      "microservice.services.mqtt.broker-url"
+    )
+
+  lazy val mqttClientId: String =
+    configuration.get[String](
+      "microservice.services.mqtt.client-id"
+    )
+
+  lazy val mqttTopic: String =
+    configuration.get[String](
+      "microservice.services.mqtt.topic"
+    )
 }
