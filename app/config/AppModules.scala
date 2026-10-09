@@ -1,25 +1,28 @@
 package config
 
-import play.api.{ Configuration, Environment, Logging }
-import play.api.inject.{ Binding, Module }
-
+import jobs.JobNestScheduler
+import play.api.{Configuration, Environment, Logging}
+import play.api.inject.{Binding, Module}
 import uk.gov.hmrc.http.client.HttpClientV2
-
 import services.MqttSubscriberService
 
 class AppModules extends Module with Logging {
   override def bindings(environment: Environment, configuration: Configuration): Seq[Binding[?]] = {
-    if (configuration.get[Boolean]("microservice.services.mqtt.isEnabled")) {
-      logger.info("MqttSubscriberService is enabled via configuration")
-      Seq(
-        bind[HttpClientV2].toProvider[HttpClientV2Provider],
-        bind[MqttSubscriberService].toSelf.eagerly()
-      )
+    val nestScheduler = if (configuration.get[Boolean]("scheduler.nest.isEnabled")) {
+      Seq(bind[JobNestScheduler].toSelf.eagerly())
     } else {
-      logger.info("MqttSubscriberService is disabled via configuration")
-      Seq(
-        bind[HttpClientV2].toProvider[HttpClientV2Provider]
-      )
+      logger.warn("Nest scheduler is disabled via configuration")
+      Seq.empty
     }
+
+    val mqttSubscriber = if (configuration.get[Boolean]("microservice.services.mqtt.isEnabled")) {
+      logger.info("Mqtt subscriber is enabled via configuration")
+      Seq(bind[MqttSubscriberService].toSelf.eagerly())
+    } else {
+      logger.warn("Mqtt subscriber is disabled via configuration")
+      Seq.empty
+    }
+
+    Seq(bind[HttpClientV2].toProvider[HttpClientV2Provider]) ++ nestScheduler ++ mqttSubscriber
   }
 }
