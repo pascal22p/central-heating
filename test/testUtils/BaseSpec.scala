@@ -10,7 +10,7 @@ import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import org.scalatestplus.play.PlaySpec
 
-import config.JobSchedulerModule
+import config.JobNestSchedulerModule
 
 trait BaseSpec
     extends PlaySpec
@@ -23,11 +23,11 @@ trait BaseSpec
 
   protected def localGuiceApplicationBuilder(): GuiceApplicationBuilder =
     GuiceApplicationBuilder()
-      .disable[JobSchedulerModule]
+      .disable[JobNestSchedulerModule]
       .configure(
-        "scheduler.partial-update.isEnabled"                  -> false,
-        "scheduler.partial-update.startDelayInSeconds"        -> 2000,
-        "scheduler.partial-update.schedulerIntervalInMinutes" -> 2000
+        "scheduler.nest.isEnabled"                  -> false,
+        "scheduler.nest.startDelayInSeconds"        -> 2000,
+        "scheduler.nest.schedulerIntervalInSeconds" -> 2000
       )
 
   implicit override lazy val app: Application = localGuiceApplicationBuilder().build()

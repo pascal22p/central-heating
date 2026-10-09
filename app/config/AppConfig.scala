@@ -70,6 +70,11 @@ class AppConfig @Inject() (configuration: Configuration) {
       "microservice.services.mqtt.client-id"
     )
 
+  lazy val mqttIsEnabled: Boolean =
+    configuration.get[Boolean](
+      "microservice.services.mqtt.isEnabled"
+    )
+
   lazy val nestSchedulerIsEnabled: Boolean =
     configuration.get[Boolean](
       "scheduler.nest.isEnabled"
