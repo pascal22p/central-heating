@@ -37,6 +37,14 @@ final case class Trv(
 
 object Trv {
 
+  val sqlFormat: Format[Trv] = {
+    given Format[RunningState]               = Json.format[RunningState]
+    given Format[SystemMode]                 = Json.format[SystemMode]
+    given Format[TemperatureSensorSelection] = Json.format[TemperatureSensorSelection]
+    given Format[ChildLock]                  = Json.format[ChildLock]
+    Json.format[Trv]
+  }
+
   given Reads[Trv] =
     Reads { json =>
       for

@@ -1,10 +1,9 @@
 package services
 
-import javax.inject.Inject
+import javax.inject.{ Inject, Singleton }
 import play.api.inject.ApplicationLifecycle
 import play.api.libs.json.*
 import play.api.Logging
-import scala.collection.concurrent.TrieMap
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.concurrent.duration.DurationInt
 import scala.util.control.NonFatal
@@ -19,11 +18,14 @@ import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
 import config.AppConfig
 import models.Trv
+import queries.TrvQueries
 
-class MqttService @Inject() (
+@Singleton
+class MqttSubscriberService @Inject() (
     appConfig: AppConfig,
     lifecycle: ApplicationLifecycle,
-    actorSystem: ActorSystem
+    actorSystem: ActorSystem,
+    trvQueries: TrvQueries
 )(implicit ec: ExecutionContext)
     extends Logging {
 
@@ -36,9 +38,6 @@ class MqttService @Inject() (
   private val clientId =
     s"${appConfig.mqttClientId}-${java.util.UUID.randomUUID()}"
 
-  private val topic =
-    appConfig.mqttTopic
-
   private val connectionSettings =
     MqttConnectionSettings(
       broker = brokerUrl,
@@ -48,12 +47,10 @@ class MqttService @Inject() (
 
   private val subscriptions =
     MqttSubscriptions(
-      topic,
-      MqttQoS.AtLeastOnce
+      appConfig.trvDevices.map { device =>
+        device -> MqttQoS.AtLeastOnce
+      }.toMap
     )
-
-  private val trvs =
-    TrieMap.empty[String, Trv]
 
   private val restartSettings =
     RestartSettings(
@@ -92,8 +89,12 @@ class MqttService @Inject() (
             termination
           }
       }
-      .map { message =>
-        handleMessage(
+      .mapAsync(1) { message =>
+        logger.info(
+          s"Received MQTT message on topic ${message.topic}: ${message.payload.utf8String}"
+        )
+
+        handleTrvMessage(
           message.topic,
           message.payload.utf8String
         )
@@ -114,100 +115,41 @@ class MqttService @Inject() (
   }
 
   logger.info(
-    s"MQTT service started: broker=$brokerUrl topic=$topic clientId=$clientId"
+    s"MQTT service started: broker=$brokerUrl devices=${appConfig.trvDevices} clientId=$clientId"
   )
 
-  def getTrvs: Seq[Trv] =
-    trvs.values.toSeq
-
-  def getTrv(name: String): Option[Trv] =
-    trvs.get(name)
-
-  private def handleMessage(
-      receivedTopic: String,
-      payload: String
-  ): Unit = {
-    extractDeviceName(receivedTopic) match {
-      case Some(deviceName) if deviceName.endsWith("-trv") =>
-        handleTrvMessage(
-          deviceName,
-          receivedTopic,
-          payload
-        )
-
-      case _ =>
-        ()
-    }
-  }
-
-  private def extractDeviceName(
-      receivedTopic: String
-  ): Option[String] = {
-    val prefix = appConfig.mqttTopic.stripSuffix("/+")
-
-    if (receivedTopic.startsWith(s"$prefix/")) {
-      val deviceName =
-        receivedTopic.stripPrefix(s"$prefix/")
-
-      if (deviceName.nonEmpty && !deviceName.contains("/")) {
-        Some(deviceName)
-      } else {
-        None
-      }
-    } else {
-      None
-    }
-  }
-
   private def handleTrvMessage(
-      deviceName: String,
       receivedTopic: String,
       payload: String
-  ): Unit = {
+  ): Future[Unit] = {
     logger.debug(payload)
+
     Json.parse(payload).validate[Trv] match {
       case JsSuccess(state, _) =>
         val trv =
-          state.copy(name = deviceName)
+          state.copy(name = receivedTopic)
 
-        trvs.put(deviceName, trv) match {
-          case None =>
+        trvQueries
+          .saveTrv(trv)
+          .map { _ =>
             logger.info(
-              s"Initial TRV state received for $deviceName: $trv"
+              s"TRV state saved for $receivedTopic: $trv"
             )
-          case Some(previous) if previous != trv =>
-            logStateChanges(deviceName, previous, trv)
-          case Some(_) =>
-            ()
-        }
+          }
+          .recover {
+            case NonFatal(error) =>
+              logger.error(
+                s"Failed to save TRV state for $receivedTopic",
+                error
+              )
+          }
 
       case JsError(errors) =>
-        logger.warn(s"Invalid TRV state on $receivedTopic: ${JsError.toJson(errors)}")
-    }
-  }
+        logger.warn(
+          s"Invalid TRV state on $receivedTopic: ${JsError.toJson(errors)}"
+        )
 
-  private def logStateChanges(
-      deviceName: String,
-      previous: Trv,
-      current: Trv
-  ): Unit = {
-    val names          = previous.productElementNames.toSeq
-    val previousValues = previous.productIterator.toSeq
-    val currentValues  = current.productIterator.toSeq
-
-    val changes =
-      names
-        .zip(previousValues)
-        .zip(currentValues)
-        .collect {
-          case ((name, previousValue), currentValue) if !previousValue.equals(currentValue) =>
-            s"$name: $previousValue -> $currentValue"
-        }
-
-    if (changes.nonEmpty) {
-      logger.info(
-        s"TRV state changed for $deviceName: ${changes.mkString(", ")}"
-      )
+        Future.successful(())
     }
   }
 }
