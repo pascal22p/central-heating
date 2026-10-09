@@ -10,8 +10,6 @@ import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import org.scalatestplus.play.PlaySpec
 
-import config.JobNestSchedulerModule
-
 trait BaseSpec
     extends PlaySpec
     with GuiceOneAppPerSuite
@@ -23,8 +21,8 @@ trait BaseSpec
 
   protected def localGuiceApplicationBuilder(): GuiceApplicationBuilder =
     GuiceApplicationBuilder()
-      .disable[JobNestSchedulerModule]
       .configure(
+        "microservice.services.mqtt.isEnabled"      -> false,
         "scheduler.nest.isEnabled"                  -> false,
         "scheduler.nest.startDelayInSeconds"        -> 2000,
         "scheduler.nest.schedulerIntervalInSeconds" -> 2000

@@ -1,9 +1,11 @@
 package config
 
-import jobs.JobNestScheduler
-import play.api.{Configuration, Environment, Logging}
-import play.api.inject.{Binding, Module}
+import play.api.{ Configuration, Environment, Logging }
+import play.api.inject.{ Binding, Module }
+
 import uk.gov.hmrc.http.client.HttpClientV2
+
+import jobs.JobNestScheduler
 import services.MqttSubscriberService
 
 class AppModules extends Module with Logging {
