@@ -37,11 +37,24 @@ final case class Trv(
 
 object Trv {
 
+  @SuppressWarnings(Array("org.wartremover.warts.ToString"))
+  def enumFormat[E](values: Array[E]): Format[E] =
+    Format(
+      Reads {
+        case JsString(s) =>
+          values
+            .find(_.toString == s)
+            .fold[JsResult[E]](JsError(s"Unknown value: $s"))(JsSuccess(_))
+        case _ => JsError("error.expected.jsstring")
+      },
+      Writes(e => JsString(e.toString))
+    )
+
   val sqlFormat: Format[Trv] = {
-    given Format[RunningState]               = Json.format[RunningState]
-    given Format[SystemMode]                 = Json.format[SystemMode]
-    given Format[TemperatureSensorSelection] = Json.format[TemperatureSensorSelection]
-    given Format[ChildLock]                  = Json.format[ChildLock]
+    given Format[RunningState]               = enumFormat(RunningState.values)
+    given Format[SystemMode]                 = enumFormat(SystemMode.values)
+    given Format[TemperatureSensorSelection] = enumFormat(TemperatureSensorSelection.values)
+    given Format[ChildLock]                  = enumFormat(ChildLock.values)
     Json.format[Trv]
   }
 

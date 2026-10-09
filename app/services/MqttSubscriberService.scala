@@ -145,11 +145,8 @@ class MqttSubscriberService @Inject() (
           }
 
       case JsError(errors) =>
-        logger.warn(
-          s"Invalid TRV state on $receivedTopic: ${JsError.toJson(errors)}"
-        )
-
-        Future.successful(())
+        errors.foreach { case (path, errs) => logger.error(s"$path -> ${errs.map(_.message).mkString(", ")}") }
+        throw new RuntimeException(JsError.toJson(JsError(errors)).toString)
     }
   }
 }

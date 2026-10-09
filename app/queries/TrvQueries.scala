@@ -43,19 +43,42 @@ final class TrvQueries @Inject() (
   def getTrvs: Future[Seq[Trv]] = Future {
     db.withConnection { implicit conn =>
       SQL(
-        """SELECT name, data
+        """SELECT data
           |FROM trvs
           |WHERE expires_at > CURRENT_TIMESTAMP""".stripMargin
       )
         .as(
-          (SqlParser.str("name") ~ SqlParser.str("data")).map {
-            case name ~ data =>
-              Json
-                .parse(data)
-                .validate[Trv]
-                .map(_.copy(name = name))
-                .get
-          }.*
+          SqlParser
+            .str("data")
+            .map {
+              case data =>
+                Json
+                  .parse(data)
+                  .as[Trv](using Trv.sqlFormat)
+            }
+            .*
+        )
+    }
+  }(using databaseExecutionContext)
+
+  def getTrv(deviceName: String): Future[Option[Trv]] = Future {
+    db.withConnection { implicit conn =>
+      SQL(
+        """SELECT data
+          |FROM trvs
+          |WHERE name = {name} AND expires_at > CURRENT_TIMESTAMP""".stripMargin
+      )
+        .on("name" -> deviceName)
+        .as(
+          SqlParser
+            .str("data")
+            .map {
+              case data =>
+                Json
+                  .parse(data)
+                  .as[Trv](using Trv.sqlFormat)
+            }
+            .singleOpt
         )
     }
   }(using databaseExecutionContext)

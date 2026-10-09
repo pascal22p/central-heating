@@ -1,7 +1,7 @@
 package services
 
 import javax.inject.{ Inject, Singleton }
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.Future
 
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.connectors.mqtt.*
@@ -18,7 +18,7 @@ import config.AppConfig
 class MqttPublisherService @Inject() (
     appConfig: AppConfig,
     actorSystem: ActorSystem
-)(implicit ec: ExecutionContext) {
+) {
 
   private given Materializer =
     Materializer(actorSystem)
