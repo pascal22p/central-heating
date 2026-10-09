@@ -26,3 +26,18 @@ CREATE TABLE `nest_authorisation` (
                                       CONSTRAINT `nest_authorisation_singleton`
                                           CHECK (`id` = 1)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+
+DROP TABLE IF EXISTS `trvs`;
+CREATE TABLE `trvs` (
+                        `name` varchar(255) NOT NULL,
+                        `data` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`data`)),
+                        `expires_at` timestamp(6) NOT NULL,
+                        PRIMARY KEY (`name`),
+                        KEY `trvs_expires_at` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE EVENT IF NOT EXISTS cleanup_expired_trvs
+ON SCHEDULE EVERY 5 MINUTE
+DO
+    DELETE FROM trvs
+    WHERE expires_at <= CURRENT_TIMESTAMP;

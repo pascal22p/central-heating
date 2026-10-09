@@ -70,9 +70,9 @@ class AppConfig @Inject() (configuration: Configuration) {
       "microservice.services.mqtt.client-id"
     )
 
-  lazy val mqttTopic: String =
-    configuration.get[String](
-      "microservice.services.mqtt.topic"
+  lazy val mqttIsEnabled: Boolean =
+    configuration.get[Boolean](
+      "microservice.services.mqtt.isEnabled"
     )
 
   lazy val nestSchedulerIsEnabled: Boolean =
@@ -93,5 +93,10 @@ class AppConfig @Inject() (configuration: Configuration) {
   lazy val nestSchedulerTimeoutInSeconds: Int =
     configuration.get[Int](
       "scheduler.nest.timeoutInSeconds"
+    )
+
+  lazy val trvDevices: Seq[String] =
+    configuration.get[Seq[String]](
+      "microservice.services.mqtt.trv-devices"
     )
 }

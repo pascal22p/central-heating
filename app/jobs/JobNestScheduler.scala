@@ -11,7 +11,7 @@ import connectors.{ GraphiteConnector, NestConnector }
 import models.LoggingWithRequest
 
 @Singleton
-class JobScheduler @Inject() (
+class JobNestScheduler @Inject() (
     actorSystem: ActorSystem,
     lifecycle: ApplicationLifecycle,
     nestConnector: NestConnector,
@@ -25,7 +25,7 @@ class JobScheduler @Inject() (
   private val nestUpdateActorRef: ActorRef =
     actorSystem.actorOf(
       Props(new NestMetricsToGraphiteJob(nestConnector, graphiteConnector, appConfig)),
-      "partial-update-actor"
+      "nest-graphite-publishing-actor"
     )
 
   private val partialUpdateCancellable =
