@@ -21,11 +21,14 @@ class GraphiteConnector @Inject() (
     Future {
       val timestamp = System.currentTimeMillis() / 1000
 
+      val optValues = Seq(
+        device.traits.heatSetpointCelsius.map(value => metric("heat_setpoint_celsius", value, timestamp)),
+        device.traits.coolSetpointCelsius.map(value => metric("cool_setpoint_celsius", value, timestamp))
+      ).flatten
+
       val metrics = Seq(
         metric("temperature_celsius", device.traits.temperatureCelsius, timestamp),
         metric("humidity_percent", device.traits.humidityPercent, timestamp),
-        metric("heat_setpoint_celsius", device.traits.heatSetpointCelsius, timestamp),
-        metric("cool_setpoint_celsius", device.traits.coolSetpointCelsius, timestamp),
         metric("eco_heat_celsius", device.traits.ecoHeatCelsius, timestamp),
         metric("eco_cool_celsius", device.traits.ecoCoolCelsius, timestamp),
         binaryMetric(
@@ -49,7 +52,7 @@ class GraphiteConnector @Inject() (
           "OFF",
           timestamp
         )
-      )
+      ) ++ optValues
 
       if (metrics.nonEmpty) {
         logger.info(
@@ -121,5 +124,13 @@ class GraphiteConnector @Inject() (
 
       case `offValue` =>
         metric(name, 0, timestamp)
+
+      case other =>
+        val ex = new RuntimeException(
+          s"Invalid value for metric '$name': '$other' " +
+            s"(expected '$onValue' or '$offValue')"
+        )
+        logger.error(ex.getMessage)
+        throw ex
     }
 }

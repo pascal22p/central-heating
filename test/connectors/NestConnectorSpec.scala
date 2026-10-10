@@ -267,6 +267,11 @@ class NestConnectorSpec extends BaseSpec with WireMockHelper with ScalaFutures {
                     "sdm.devices.traits.ThermostatMode": {
                       "mode": "HEAT"
                     },
+                    "sdm.devices.traits.ThermostatEco": {
+                      "mode": "OFF",
+                      "heatCelsius": 26.0,
+                      "coolCelsius": 16.0
+                    },
                     "sdm.devices.traits.ThermostatTemperatureSetpoint": {
                       "heatCelsius": 21.0
                     },
@@ -379,7 +384,31 @@ class NestConnectorSpec extends BaseSpec with WireMockHelper with ScalaFutures {
                 {
                   "name": "enterprises/test-project-id/devices/test-device-id",
                   "type": "sdm.devices.types.THERMOSTAT",
-                  "traits": {}
+                  "traits": {
+                    "sdm.devices.traits.Connectivity": {
+                      "status": "ONLINE"
+                    },
+                    "sdm.devices.traits.Temperature": {
+                      "ambientTemperatureCelsius": 20.5
+                    },
+                    "sdm.devices.traits.Humidity": {
+                      "ambientHumidityPercent": 45.0
+                    },
+                    "sdm.devices.traits.ThermostatMode": {
+                      "mode": "HEAT"
+                    },
+                    "sdm.devices.traits.ThermostatEco": {
+                      "mode": "OFF",
+                      "heatCelsius": 26.0,
+                      "coolCelsius": 16.0
+                    },
+                    "sdm.devices.traits.ThermostatTemperatureSetpoint": {
+                      "heatCelsius": 21.0
+                    },
+                    "sdm.devices.traits.ThermostatHvac": {
+                      "status": "OFF"
+                    }
+                  }
                 }
                 """
               )
