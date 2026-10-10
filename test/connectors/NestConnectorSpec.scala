@@ -295,12 +295,12 @@ class NestConnectorSpec extends BaseSpec with WireMockHelper with ScalaFutures {
           device.deviceType mustBe
             "sdm.devices.types.THERMOSTAT"
 
-          device.traits.connectivity mustBe Some("ONLINE")
-          device.traits.temperatureCelsius mustBe Some(20.5)
-          device.traits.humidityPercent mustBe Some(45.0)
-          device.traits.thermostatMode mustBe Some("HEAT")
+          device.traits.connectivity mustBe "ONLINE"
+          device.traits.temperatureCelsius mustBe 20.5
+          device.traits.humidityPercent mustBe 45.0
+          device.traits.thermostatMode mustBe "HEAT"
           device.traits.heatSetpointCelsius mustBe Some(21.0)
-          device.traits.hvacStatus mustBe Some("OFF")
+          device.traits.hvacStatus mustBe "OFF"
 
         case Left(error) =>
           fail(s"Expected device but received $error")

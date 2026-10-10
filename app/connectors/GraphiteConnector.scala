@@ -22,12 +22,12 @@ class GraphiteConnector @Inject() (
       val timestamp = System.currentTimeMillis() / 1000
 
       val metrics = Seq(
-        device.traits.temperatureCelsius.map(value => metric("temperature_celsius", value, timestamp)),
-        device.traits.humidityPercent.map(value => metric("humidity_percent", value, timestamp)),
-        device.traits.heatSetpointCelsius.map(value => metric("heat_setpoint_celsius", value, timestamp)),
-        device.traits.coolSetpointCelsius.map(value => metric("cool_setpoint_celsius", value, timestamp)),
-        device.traits.ecoHeatCelsius.map(value => metric("eco_heat_celsius", value, timestamp)),
-        device.traits.ecoCoolCelsius.map(value => metric("eco_cool_celsius", value, timestamp)),
+        metric("temperature_celsius", device.traits.temperatureCelsius, timestamp),
+        metric("humidity_percent", device.traits.humidityPercent, timestamp),
+        metric("heat_setpoint_celsius", device.traits.heatSetpointCelsius, timestamp),
+        metric("cool_setpoint_celsius", device.traits.coolSetpointCelsius, timestamp),
+        metric("eco_heat_celsius", device.traits.ecoHeatCelsius, timestamp),
+        metric("eco_cool_celsius", device.traits.ecoCoolCelsius, timestamp),
         binaryMetric(
           "thermostat_mode",
           device.traits.thermostatMode,
@@ -49,7 +49,7 @@ class GraphiteConnector @Inject() (
           "OFF",
           timestamp
         )
-      ).flatten
+      )
 
       if (metrics.nonEmpty) {
         logger.info(
@@ -110,19 +110,16 @@ class GraphiteConnector @Inject() (
 
   private def binaryMetric(
       name: String,
-      value: Option[String],
+      value: String,
       onValue: String,
       offValue: String,
       timestamp: Long
-  ): Option[String] =
-    value.flatMap {
+  ): String =
+    value match {
       case `onValue` =>
-        Some(metric(name, 1, timestamp))
+        metric(name, 1, timestamp)
 
       case `offValue` =>
-        Some(metric(name, 0, timestamp))
-
-      case _ =>
-        None
+        metric(name, 0, timestamp)
     }
 }
