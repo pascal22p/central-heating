@@ -267,6 +267,11 @@ class NestConnectorSpec extends BaseSpec with WireMockHelper with ScalaFutures {
                     "sdm.devices.traits.ThermostatMode": {
                       "mode": "HEAT"
                     },
+                    "sdm.devices.traits.ThermostatEco": {
+                      "mode": "OFF",
+                      "heatCelsius": 26.0,
+                      "coolCelsius": 16.0
+                    },
                     "sdm.devices.traits.ThermostatTemperatureSetpoint": {
                       "heatCelsius": 21.0
                     },
@@ -295,12 +300,12 @@ class NestConnectorSpec extends BaseSpec with WireMockHelper with ScalaFutures {
           device.deviceType mustBe
             "sdm.devices.types.THERMOSTAT"
 
-          device.traits.connectivity mustBe Some("ONLINE")
-          device.traits.temperatureCelsius mustBe Some(20.5)
-          device.traits.humidityPercent mustBe Some(45.0)
-          device.traits.thermostatMode mustBe Some("HEAT")
+          device.traits.connectivity mustBe "ONLINE"
+          device.traits.temperatureCelsius mustBe 20.5
+          device.traits.humidityPercent mustBe 45.0
+          device.traits.thermostatMode mustBe "HEAT"
           device.traits.heatSetpointCelsius mustBe Some(21.0)
-          device.traits.hvacStatus mustBe Some("OFF")
+          device.traits.hvacStatus mustBe "OFF"
 
         case Left(error) =>
           fail(s"Expected device but received $error")
@@ -379,7 +384,31 @@ class NestConnectorSpec extends BaseSpec with WireMockHelper with ScalaFutures {
                 {
                   "name": "enterprises/test-project-id/devices/test-device-id",
                   "type": "sdm.devices.types.THERMOSTAT",
-                  "traits": {}
+                  "traits": {
+                    "sdm.devices.traits.Connectivity": {
+                      "status": "ONLINE"
+                    },
+                    "sdm.devices.traits.Temperature": {
+                      "ambientTemperatureCelsius": 20.5
+                    },
+                    "sdm.devices.traits.Humidity": {
+                      "ambientHumidityPercent": 45.0
+                    },
+                    "sdm.devices.traits.ThermostatMode": {
+                      "mode": "HEAT"
+                    },
+                    "sdm.devices.traits.ThermostatEco": {
+                      "mode": "OFF",
+                      "heatCelsius": 26.0,
+                      "coolCelsius": 16.0
+                    },
+                    "sdm.devices.traits.ThermostatTemperatureSetpoint": {
+                      "heatCelsius": 21.0
+                    },
+                    "sdm.devices.traits.ThermostatHvac": {
+                      "status": "OFF"
+                    }
+                  }
                 }
                 """
               )

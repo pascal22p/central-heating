@@ -6,6 +6,7 @@ import javax.inject.*
 import play.api.libs.json.*
 import play.api.libs.ws.writeableOf_JsValue
 import play.api.libs.ws.WSBodyWritables.writeableOf_urlEncodedForm
+import play.api.Logging
 import scala.concurrent.{ ExecutionContext, Future }
 
 import uk.gov.hmrc.http.{ HeaderCarrier, HttpResponse, StringContextOps, UpstreamErrorResponse }
@@ -22,7 +23,8 @@ class NestConnector @Inject() (
     appConfig: AppConfig,
     http: HttpClientV2,
     nestAuthorisationQueries: NestAuthorisationQueries
-)(implicit ec: ExecutionContext) {
+)(implicit ec: ExecutionContext)
+    extends Logging {
 
   private val scope =
     "https://www.googleapis.com/auth/sdm.service"
@@ -260,4 +262,37 @@ class NestConnector @Inject() (
 
   private[connectors] def clearToken(): Unit =
     token = None
+
+  def setHeatingMode()(
+      implicit hc: HeaderCarrier
+  ): EitherT[Future, UpstreamErrorResponse, Unit] = {
+
+    getValidToken().flatMap { accessToken =>
+      val path =
+        s"/v1/enterprises/${appConfig.nestProjectId}/devices/${appConfig.nestDeviceId}:executeCommand"
+
+      val url =
+        s"${appConfig.nestApiHost}$path"
+
+      val body = Json.obj(
+        "command" -> "sdm.devices.commands.ThermostatMode.SetMode",
+        "params"  -> Json.obj(
+          "mode" -> "HEAT"
+        )
+      )
+
+      EitherT(
+        http
+          .post(url"$url")
+          .setHeader(
+            "Authorization" -> s"Bearer $accessToken"
+          )
+          .withBody(body)
+          .execute[Either[UpstreamErrorResponse, HttpResponse]]
+      ).map { _ =>
+        ()
+      }
+    }
+  }
+
 }

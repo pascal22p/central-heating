@@ -49,85 +49,61 @@
         SummaryListRow(
           key = Key(Text("Status")),
           value = Value(Text(
-            device.traits.connectivity.getOrElse("Unknown")
+            device.traits.connectivity
           ))
         ),
         SummaryListRow(
           key = Key(Text("Temperature")),
           value = Value(Text(
-            device.traits.temperatureCelsius
-              .map(value => f"$value%.1f °C")
-              .getOrElse("Unknown")
+            f"${device.traits.temperatureCelsius}%.1f °C"
           ))
         ),
         SummaryListRow(
           key = Key(Text("Humidity")),
           value = Value(Text(
-            device.traits.humidityPercent
-              .map(value => f"$value%.0f%%")
-              .getOrElse("Unknown")
+            f"${device.traits.humidityPercent}%.0f%%"
           ))
         ),
         SummaryListRow(
           key = Key(Text("Mode")),
           value = Value(Text(
-            device.traits.thermostatMode.getOrElse("Unknown")
+            device.traits.thermostatMode
           ))
         ),
         SummaryListRow(
           key = Key(Text("HVAC")),
           value = Value(Text(
-            device.traits.hvacStatus.getOrElse("Unknown")
+            device.traits.hvacStatus
           ))
         ),
         SummaryListRow(
           key = Key(Text("Heat setpoint")),
           value = Value(Text(
-            device.traits.heatSetpointCelsius
-              .map(value => f"$value%.1f °C")
-              .getOrElse("Not set")
+            device.traits.heatSetpointCelsius.fold("Unknown")(value => f"$value%.1f °C")
           ))
         ),
         SummaryListRow(
           key = Key(Text("Cool setpoint")),
           value = Value(Text(
-            device.traits.coolSetpointCelsius
-              .map(value => f"$value%.1f °C")
-              .getOrElse("Not set")
+            device.traits.coolSetpointCelsius.fold("Unknown")(value => f"$value%.1f °C")
           ))
         ),
         SummaryListRow(
           key = Key(Text("Eco mode")),
           value = Value(Text(
-            device.traits.ecoMode.getOrElse("Unknown")
+            device.traits.ecoMode
           ))
         ),
         SummaryListRow(
           key = Key(Text("Eco heat")),
           value = Value(Text(
-            device.traits.ecoHeatCelsius
-              .map(value => f"$value%.1f °C")
-              .getOrElse("Not set")
+            f"${device.traits.ecoHeatCelsius}%.1f °C"
           ))
         ),
         SummaryListRow(
           key = Key(Text("Eco cool")),
           value = Value(Text(
-            device.traits.ecoCoolCelsius
-              .map(value => f"$value%.1f °C")
-              .getOrElse("Not set")
-          ))
-        ),
-        SummaryListRow(
-          key = Key(Text("Fan")),
-          value = Value(Text(
-            device.traits.fanTimerMode.getOrElse("Unknown")
-          ))
-        ),
-        SummaryListRow(
-          key = Key(Text("Fan timeout")),
-          value = Value(Text(
-            device.traits.fanTimerTimeout.getOrElse("Not set")
+            f"${device.traits.ecoCoolCelsius}%.1f °C"
           ))
         )
       )

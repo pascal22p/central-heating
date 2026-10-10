@@ -57,18 +57,16 @@ class GraphiteConnectorSpec extends BaseSpec {
           name = "Nest Thermostat",
           deviceType = "sdm.devices.types.THERMOSTAT",
           traits = NestTraits(
-            connectivity = Some("ONLINE"),
-            temperatureCelsius = Some(19.5),
-            humidityPercent = Some(54.0),
-            thermostatMode = Some("HEAT"),
+            connectivity = "ONLINE",
+            temperatureCelsius = 19.5,
+            humidityPercent = 54.0,
+            thermostatMode = "HEAT",
             heatSetpointCelsius = Some(21.0),
             coolSetpointCelsius = Some(25.0),
-            hvacStatus = Some("OFF"),
-            ecoMode = Some("MANUAL_ECO"),
-            ecoHeatCelsius = Some(16.0),
-            ecoCoolCelsius = Some(24.0),
-            fanTimerMode = Some("OFF"),
-            fanTimerTimeout = None
+            hvacStatus = "OFF",
+            ecoMode = "MANUAL_ECO",
+            ecoHeatCelsius = 16.0,
+            ecoCoolCelsius = 24.0
           )
         )
 
@@ -80,6 +78,7 @@ class GraphiteConnectorSpec extends BaseSpec {
         val lines =
           payload.trim.linesIterator.toSeq
 
+        println(lines)
         lines.size mustBe 9
 
         lines.exists(_.startsWith("heating.nest.temperature_celsius 19.5 ")) mustBe true
@@ -140,18 +139,16 @@ class GraphiteConnectorSpec extends BaseSpec {
           name = "Nest Thermostat",
           deviceType = "sdm.devices.types.THERMOSTAT",
           traits = NestTraits(
-            connectivity = None,
-            temperatureCelsius = None,
-            humidityPercent = None,
-            thermostatMode = Some("OFF"),
+            connectivity = "",
+            temperatureCelsius = 0,
+            humidityPercent = 0,
+            thermostatMode = "OFF",
             heatSetpointCelsius = None,
             coolSetpointCelsius = None,
-            hvacStatus = Some("OFF"),
-            ecoMode = Some("OFF"),
-            ecoHeatCelsius = None,
-            ecoCoolCelsius = None,
-            fanTimerMode = None,
-            fanTimerTimeout = None
+            hvacStatus = "OFF",
+            ecoMode = "OFF",
+            ecoHeatCelsius = 0,
+            ecoCoolCelsius = 0
           )
         )
 
@@ -211,18 +208,16 @@ class GraphiteConnectorSpec extends BaseSpec {
           name = "Nest Thermostat",
           deviceType = "sdm.devices.types.THERMOSTAT",
           traits = NestTraits(
-            connectivity = None,
-            temperatureCelsius = Some(19.5),
-            humidityPercent = None,
-            thermostatMode = None,
-            heatSetpointCelsius = None,
-            coolSetpointCelsius = None,
-            hvacStatus = None,
-            ecoMode = None,
-            ecoHeatCelsius = None,
-            ecoCoolCelsius = None,
-            fanTimerMode = None,
-            fanTimerTimeout = None
+            connectivity = "",
+            temperatureCelsius = 19.5,
+            humidityPercent = 54.0,
+            thermostatMode = "HEAT",
+            heatSetpointCelsius = Some(21.0),
+            coolSetpointCelsius = Some(25.0),
+            hvacStatus = "OFF",
+            ecoMode = "OFF",
+            ecoHeatCelsius = 16.0,
+            ecoCoolCelsius = 24.0
           )
         )
 
@@ -232,12 +227,17 @@ class GraphiteConnectorSpec extends BaseSpec {
           received.get(5, TimeUnit.SECONDS)
 
         val lines =
-          payload.trim.linesIterator.toSeq
+          payload.trim
 
-        lines must have size 1
-        lines.head.startsWith(
-          "heating.nest.temperature_celsius 19.5 "
-        ) mustBe true
+        lines must include("heating.nest.temperature_celsius 19.5")
+        lines must include("heating.nest.humidity_percent 54.0")
+        lines must include("heating.nest.eco_heat_celsius 16.0")
+        lines must include("heating.nest.eco_cool_celsius 24.0")
+        lines must include("heating.nest.thermostat_mode 1")
+        lines must include("heating.nest.hvac_status 0")
+        lines must include("heating.nest.eco_mode 0")
+        lines must include("heating.nest.heat_setpoint_celsius 21.0")
+        lines must include("heating.nest.cool_setpoint_celsius 25.0")
       } finally {
         server.close()
         executor.shutdownNow(): Unit

@@ -25,7 +25,8 @@ class MqttSubscriberService @Inject() (
     appConfig: AppConfig,
     lifecycle: ApplicationLifecycle,
     actorSystem: ActorSystem,
-    trvQueries: TrvQueries
+    trvQueries: TrvQueries,
+    heatingControlService: HeatingControlService
 )(implicit ec: ExecutionContext)
     extends Logging {
 
@@ -131,10 +132,11 @@ class MqttSubscriberService @Inject() (
 
         trvQueries
           .saveTrv(trv)
-          .map { _ =>
+          .flatMap { _ =>
             logger.info(
               s"TRV state saved for $receivedTopic: $trv"
             )
+            heatingControlService.onTrvUpdate(trv)
           }
           .recover {
             case NonFatal(error) =>

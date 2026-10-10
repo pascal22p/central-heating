@@ -21,13 +21,16 @@ class GraphiteConnector @Inject() (
     Future {
       val timestamp = System.currentTimeMillis() / 1000
 
-      val metrics = Seq(
-        device.traits.temperatureCelsius.map(value => metric("temperature_celsius", value, timestamp)),
-        device.traits.humidityPercent.map(value => metric("humidity_percent", value, timestamp)),
+      val optValues = Seq(
         device.traits.heatSetpointCelsius.map(value => metric("heat_setpoint_celsius", value, timestamp)),
-        device.traits.coolSetpointCelsius.map(value => metric("cool_setpoint_celsius", value, timestamp)),
-        device.traits.ecoHeatCelsius.map(value => metric("eco_heat_celsius", value, timestamp)),
-        device.traits.ecoCoolCelsius.map(value => metric("eco_cool_celsius", value, timestamp)),
+        device.traits.coolSetpointCelsius.map(value => metric("cool_setpoint_celsius", value, timestamp))
+      ).flatten
+
+      val metrics = Seq(
+        metric("temperature_celsius", device.traits.temperatureCelsius, timestamp),
+        metric("humidity_percent", device.traits.humidityPercent, timestamp),
+        metric("eco_heat_celsius", device.traits.ecoHeatCelsius, timestamp),
+        metric("eco_cool_celsius", device.traits.ecoCoolCelsius, timestamp),
         binaryMetric(
           "thermostat_mode",
           device.traits.thermostatMode,
@@ -49,7 +52,7 @@ class GraphiteConnector @Inject() (
           "OFF",
           timestamp
         )
-      ).flatten
+      ) ++ optValues
 
       if (metrics.nonEmpty) {
         logger.info(
@@ -110,19 +113,24 @@ class GraphiteConnector @Inject() (
 
   private def binaryMetric(
       name: String,
-      value: Option[String],
+      value: String,
       onValue: String,
       offValue: String,
       timestamp: Long
-  ): Option[String] =
-    value.flatMap {
+  ): String =
+    value match {
       case `onValue` =>
-        Some(metric(name, 1, timestamp))
+        metric(name, 1, timestamp)
 
       case `offValue` =>
-        Some(metric(name, 0, timestamp))
+        metric(name, 0, timestamp)
 
-      case _ =>
-        None
+      case other =>
+        val ex = new RuntimeException(
+          s"Invalid value for metric '$name': '$other' " +
+            s"(expected '$onValue' or '$offValue')"
+        )
+        logger.error(ex.getMessage)
+        throw ex
     }
 }

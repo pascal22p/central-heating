@@ -9,18 +9,16 @@ final case class NestDevice(
 )
 
 final case class NestTraits(
-    connectivity: Option[String],
-    temperatureCelsius: Option[Double],
-    humidityPercent: Option[Double],
-    thermostatMode: Option[String],
+    connectivity: String,
+    temperatureCelsius: Double,
+    humidityPercent: Double,
+    thermostatMode: String,
     heatSetpointCelsius: Option[Double],
     coolSetpointCelsius: Option[Double],
-    hvacStatus: Option[String],
-    ecoMode: Option[String],
-    ecoHeatCelsius: Option[Double],
-    ecoCoolCelsius: Option[Double],
-    fanTimerMode: Option[String],
-    fanTimerTimeout: Option[String]
+    hvacStatus: String,
+    ecoMode: String,
+    ecoHeatCelsius: Double,
+    ecoCoolCelsius: Double
 )
 
 object NestDevice {
@@ -35,16 +33,16 @@ object NestDevice {
       name = name,
       deviceType = deviceType,
       traits = NestTraits(
-        connectivity = (traits \ "sdm.devices.traits.Connectivity" \ "status").asOpt[String],
+        connectivity = (traits \ "sdm.devices.traits.Connectivity" \ "status").as[String],
 
         temperatureCelsius = (traits \ "sdm.devices.traits.Temperature" \ "ambientTemperatureCelsius")
-          .asOpt[Double],
+          .as[Double],
 
         humidityPercent = (traits \ "sdm.devices.traits.Humidity" \ "ambientHumidityPercent")
-          .asOpt[Double],
+          .as[Double],
 
         thermostatMode = (traits \ "sdm.devices.traits.ThermostatMode" \ "mode")
-          .asOpt[String],
+          .as[String],
 
         heatSetpointCelsius = (traits \ "sdm.devices.traits.ThermostatTemperatureSetpoint" \ "heatCelsius")
           .asOpt[Double],
@@ -53,22 +51,16 @@ object NestDevice {
           .asOpt[Double],
 
         hvacStatus = (traits \ "sdm.devices.traits.ThermostatHvac" \ "status")
-          .asOpt[String],
+          .as[String],
 
         ecoMode = (traits \ "sdm.devices.traits.ThermostatEco" \ "mode")
-          .asOpt[String],
+          .as[String],
 
         ecoHeatCelsius = (traits \ "sdm.devices.traits.ThermostatEco" \ "heatCelsius")
-          .asOpt[Double],
+          .as[Double],
 
         ecoCoolCelsius = (traits \ "sdm.devices.traits.ThermostatEco" \ "coolCelsius")
-          .asOpt[Double],
-
-        fanTimerMode = (traits \ "sdm.devices.traits.Fan" \ "timerMode")
-          .asOpt[String],
-
-        fanTimerTimeout = (traits \ "sdm.devices.traits.Fan" \ "timerTimeout")
-          .asOpt[String]
+          .as[Double],
       )
     )
   }

@@ -96,7 +96,19 @@ class AppConfig @Inject() (configuration: Configuration) {
     )
 
   lazy val trvDevices: Seq[String] =
-    configuration.get[Seq[String]](
-      "microservice.services.mqtt.trv-devices"
-    )
+    configuration
+      .get[String](
+        "microservice.services.mqtt.trv-devices"
+      )
+      .split(",")
+      .toSeq
+
+  lazy val heatingDemandActiveTemperatureCelsius: Double =
+    configuration.get[Double]("heating-demand.active-temperature-celsius")
+
+  lazy val heatingDemandStandbyTemperatureCelsius: Double =
+    configuration.get[Double]("heating-demand.standby-temperature-celsius")
+
+  lazy val heatingControlIsEnabled: Boolean =
+    configuration.get[Boolean]("heating-demand.isEnabled")
 }
