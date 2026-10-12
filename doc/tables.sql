@@ -31,8 +31,17 @@ DROP TABLE IF EXISTS `devices`;
 CREATE TABLE `devices` (
                         `name` varchar(255) NOT NULL,
                         `deviceType` varchar(255) NOT NULL,
-                        `data` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`data`)),
+                        `data` JSON NOT NULL,
                         `expires_at` timestamp(6) NOT NULL,
                         PRIMARY KEY (`name`, `deviceType`),
                         KEY `trvs_expires_at` (`expires_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+DROP TABLE IF EXISTS `sensor_schedules`;
+CREATE TABLE sensor_schedules (
+                                  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                                  topic VARCHAR(255) NOT NULL,
+                                  periods JSON NOT NULL,
+                                  PRIMARY KEY (id),
+                                  UNIQUE KEY uq_sensor_schedules_topic (topic)
+);
