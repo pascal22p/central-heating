@@ -34,7 +34,7 @@ class GraphiteConnector @Inject() (
         metric("eco_heat_celsius", device.traits.ecoHeatCelsius, timestamp),
         metric("eco_cool_celsius", device.traits.ecoCoolCelsius, timestamp),
         binaryMetric(
-          "thermostat_mode",
+          "connectivity",
           device.traits.connectivity.toString,
           Connectivity.OFFLINE.toString,
           Connectivity.ONLINE.toString,

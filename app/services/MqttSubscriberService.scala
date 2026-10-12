@@ -189,7 +189,7 @@ class MqttSubscriberService @Inject() (
           .recover {
             case NonFatal(error) =>
               logger.error(
-                s"Failed to save TRV state for $receivedTopic",
+                s"Failed to save temperature sensor state for $receivedTopic",
                 error
               )
           }

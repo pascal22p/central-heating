@@ -11,11 +11,9 @@ import uk.gov.hmrc.http.{ HeaderCarrier, UpstreamErrorResponse }
 import cats.data.EitherT
 import config.AppConfig
 import connectors.NestConnector
+import models.{ ScheduleDay, SchedulePeriod }
 import models.mqtt.{ RunningState, TemperatureSensor, Trv }
 import models.nest.{ HvacStatus, ThermostatMode }
-
-final case class ScheduleDay(periods: Seq[SchedulePeriod])
-final case class SchedulePeriod(start: LocalTime, end: LocalTime, temperature: Double)
 
 @Singleton
 class HeatingControlService @Inject() (
@@ -76,12 +74,15 @@ class HeatingControlService @Inject() (
       given HeaderCarrier = HeaderCarrier()
 
       val now               = LocalTime.now
-      val targetTemperature = sensorSchedules("living-room-sensor1").periods
+      val targetTemperature = sensorSchedules(sensor.name).periods
         .find { period =>
           !now.isBefore(period.start) && !now.isAfter(period.end)
         }
         .map(_.temperature)
-        .getOrElse(16.0)
+        .getOrElse {
+          logger.info(s"No schedule period found for ${sensor.name} and time $now.")
+          appConfig.heatingDemandStandbyTemperatureCelsius
+        }
 
       val action = if (sensor.temperature < targetTemperature) {
         nestConnector.getDevice().flatMap { device =>

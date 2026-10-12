@@ -1,7 +1,6 @@
 package connectors
 
 import play.api.inject.bind
-import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.test.Helpers.{ await, defaultAwaitTimeout }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -26,12 +25,12 @@ class NestConnectorSpec extends BaseSpec with WireMockHelper with ScalaFutures {
   lazy val mockNestAuthorisationQueries: NestAuthorisationQueries =
     mock[NestAuthorisationQueries]
 
-  protected override def localGuiceApplicationBuilder(): GuiceApplicationBuilder =
-    GuiceApplicationBuilder()
-      .overrides(
-        bind[AppConfig].toInstance(mockAppConfig),
-        bind[NestAuthorisationQueries].toInstance(mockNestAuthorisationQueries)
-      )
+  implicit override lazy val app = localGuiceApplicationBuilder()
+    .overrides(
+      bind[AppConfig].toInstance(mockAppConfig),
+      bind[NestAuthorisationQueries].toInstance(mockNestAuthorisationQueries)
+    )
+    .build()
 
   lazy val sut: NestConnector =
     app.injector.instanceOf[NestConnector]
