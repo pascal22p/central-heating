@@ -1,7 +1,6 @@
 package connectors
 
 import play.api.inject.bind
-import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.test.Helpers.{ await, defaultAwaitTimeout }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -9,13 +8,14 @@ import scala.concurrent.Future
 import uk.gov.hmrc.http.{ HeaderCarrier, UpstreamErrorResponse }
 
 import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito.{ never, reset => mockReset, times, verify => mockVerify, when }
+import org.mockito.Mockito.{ never, reset as mockReset, times, verify as mockVerify, when }
 import org.scalatest.concurrent.ScalaFutures
 
 import com.github.tomakehurst.wiremock.client.WireMock.*
 
 import cats.data.OptionT
 import config.AppConfig
+import models.nest.{ Connectivity, HvacStatus, ThermostatMode }
 import queries.NestAuthorisationQueries
 import testUtils.{ BaseSpec, WireMockHelper }
 
@@ -25,12 +25,12 @@ class NestConnectorSpec extends BaseSpec with WireMockHelper with ScalaFutures {
   lazy val mockNestAuthorisationQueries: NestAuthorisationQueries =
     mock[NestAuthorisationQueries]
 
-  protected override def localGuiceApplicationBuilder(): GuiceApplicationBuilder =
-    GuiceApplicationBuilder()
-      .overrides(
-        bind[AppConfig].toInstance(mockAppConfig),
-        bind[NestAuthorisationQueries].toInstance(mockNestAuthorisationQueries)
-      )
+  implicit override lazy val app = localGuiceApplicationBuilder()
+    .overrides(
+      bind[AppConfig].toInstance(mockAppConfig),
+      bind[NestAuthorisationQueries].toInstance(mockNestAuthorisationQueries)
+    )
+    .build()
 
   lazy val sut: NestConnector =
     app.injector.instanceOf[NestConnector]
@@ -300,12 +300,12 @@ class NestConnectorSpec extends BaseSpec with WireMockHelper with ScalaFutures {
           device.deviceType mustBe
             "sdm.devices.types.THERMOSTAT"
 
-          device.traits.connectivity mustBe "ONLINE"
+          device.traits.connectivity mustBe Connectivity.ONLINE
           device.traits.temperatureCelsius mustBe 20.5
           device.traits.humidityPercent mustBe 45.0
-          device.traits.thermostatMode mustBe "HEAT"
+          device.traits.thermostatMode mustBe ThermostatMode.HEAT
           device.traits.heatSetpointCelsius mustBe Some(21.0)
-          device.traits.hvacStatus mustBe "OFF"
+          device.traits.hvacStatus mustBe HvacStatus.OFF
 
         case Left(error) =>
           fail(s"Expected device but received $error")

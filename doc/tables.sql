@@ -27,17 +27,21 @@ CREATE TABLE `nest_authorisation` (
                                           CHECK (`id` = 1)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
-DROP TABLE IF EXISTS `trvs`;
-CREATE TABLE `trvs` (
+DROP TABLE IF EXISTS `devices`;
+CREATE TABLE `devices` (
                         `name` varchar(255) NOT NULL,
-                        `data` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`data`)),
+                        `deviceType` varchar(255) NOT NULL,
+                        `data` JSON NOT NULL,
                         `expires_at` timestamp(6) NOT NULL,
-                        PRIMARY KEY (`name`),
+                        PRIMARY KEY (`name`, `deviceType`),
                         KEY `trvs_expires_at` (`expires_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE EVENT IF NOT EXISTS cleanup_expired_trvs
-ON SCHEDULE EVERY 5 MINUTE
-DO
-    DELETE FROM trvs
-    WHERE expires_at <= CURRENT_TIMESTAMP;
+DROP TABLE IF EXISTS `sensor_schedules`;
+CREATE TABLE sensor_schedules (
+                                  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                                  topic VARCHAR(255) NOT NULL,
+                                  periods JSON NOT NULL,
+                                  PRIMARY KEY (id),
+                                  UNIQUE KEY uq_sensor_schedules_topic (topic)
+);

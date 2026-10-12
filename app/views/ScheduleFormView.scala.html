@@ -1,0 +1,47 @@
+@import uk.gov.hmrc.govukfrontend.views.html.components._
+@import uk.gov.hmrc.govukfrontend.views.viewmodels.textarea._
+@import uk.gov.hmrc.govukfrontend.views.viewmodels.button._
+@import uk.gov.hmrc.govukfrontend.views.viewmodels.content.Text
+
+@this(
+  main: Main,
+  govukTextarea: GovukTextarea,
+  govukButton: GovukButton
+)
+
+@(topic: String, data: String, error: Option[String] = None)(
+  implicit request: AuthenticatedRequest[?],
+  messages: Messages
+)
+
+@main() {
+  <h1 class="govuk-heading-xl">Sensor schedule</h1>
+
+  <p class="govuk-body">
+    Topic: <code>@topic</code>
+  </p>
+
+  @helper.form(
+    action = controllers.admin.routes.ScheduleController.save(topic)
+  ) {
+    @helper.CSRF.formField
+
+    @govukTextarea(Textarea(
+      id = "data",
+      name = "data",
+      label = Label(
+        content = Text("Schedule periods JSON")
+      ),
+      rows = 20,
+      value = Some(data),
+      errorMessage = error.map(msg =>
+        ErrorMessage(content = Text(msg))
+      )
+    ))
+
+    @govukButton(Button(
+      content = Text("Save schedule"),
+      inputType = Some("submit")
+    ))
+  }
+}

@@ -1,24 +1,14 @@
-package models
+package models.nest
 
 import play.api.libs.json.Reads
+
+import models.*
+import utils.EnumFormats
 
 final case class NestDevice(
     name: String,
     deviceType: String,
     traits: NestTraits
-)
-
-final case class NestTraits(
-    connectivity: String,
-    temperatureCelsius: Double,
-    humidityPercent: Double,
-    thermostatMode: String,
-    heatSetpointCelsius: Option[Double],
-    coolSetpointCelsius: Option[Double],
-    hvacStatus: String,
-    ecoMode: String,
-    ecoHeatCelsius: Double,
-    ecoCoolCelsius: Double
 )
 
 object NestDevice {
@@ -33,7 +23,8 @@ object NestDevice {
       name = name,
       deviceType = deviceType,
       traits = NestTraits(
-        connectivity = (traits \ "sdm.devices.traits.Connectivity" \ "status").as[String],
+        connectivity = (traits \ "sdm.devices.traits.Connectivity" \ "status")
+          .as[Connectivity](using EnumFormats.enumFormat(Connectivity.values)),
 
         temperatureCelsius = (traits \ "sdm.devices.traits.Temperature" \ "ambientTemperatureCelsius")
           .as[Double],
@@ -42,7 +33,7 @@ object NestDevice {
           .as[Double],
 
         thermostatMode = (traits \ "sdm.devices.traits.ThermostatMode" \ "mode")
-          .as[String],
+          .as[ThermostatMode](using EnumFormats.enumFormat(ThermostatMode.values)),
 
         heatSetpointCelsius = (traits \ "sdm.devices.traits.ThermostatTemperatureSetpoint" \ "heatCelsius")
           .asOpt[Double],
@@ -51,10 +42,10 @@ object NestDevice {
           .asOpt[Double],
 
         hvacStatus = (traits \ "sdm.devices.traits.ThermostatHvac" \ "status")
-          .as[String],
+          .as[HvacStatus](using EnumFormats.enumFormat(HvacStatus.values)),
 
         ecoMode = (traits \ "sdm.devices.traits.ThermostatEco" \ "mode")
-          .as[String],
+          .as[EcoMode](using EnumFormats.enumFormat(EcoMode.values)),
 
         ecoHeatCelsius = (traits \ "sdm.devices.traits.ThermostatEco" \ "heatCelsius")
           .as[Double],

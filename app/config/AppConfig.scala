@@ -1,8 +1,12 @@
 package config
 
+import java.time.LocalTime
 import javax.inject.Inject
 import play.api.Configuration
 import scala.annotation.unused
+import scala.jdk.CollectionConverters.*
+
+import models.{ ScheduleDay, SchedulePeriod }
 
 class AppConfig @Inject() (configuration: Configuration) {
   @unused
@@ -98,6 +102,24 @@ class AppConfig @Inject() (configuration: Configuration) {
       .split(",")
       .toSeq
 
+  lazy val temperatureDevices: Seq[String] =
+    configuration
+      .get[String](
+        "microservice.services.mqtt.temperature-devices"
+      )
+      .split(",")
+      .toSeq
+
+  lazy val sensorControlIsEnabled: Boolean =
+    configuration.get[Boolean](
+      "heating-demand.sensorControlIsEnabled"
+    )
+
+  lazy val trvControlIsEnabled: Boolean =
+    configuration.get[Boolean](
+      "heating-demand.trvControlIsEnabled"
+    )
+
   lazy val heatingDemandActiveTemperatureCelsius: Double =
     configuration.get[Double]("heating-demand.active-temperature-celsius")
 
@@ -106,4 +128,31 @@ class AppConfig @Inject() (configuration: Configuration) {
 
   lazy val heatingControlIsEnabled: Boolean =
     configuration.get[Boolean]("heating-demand.isEnabled")
+
+  lazy val sensorSchedules: Map[String, ScheduleDay] = {
+    val config = configuration.underlying.getConfig("sensor-schedules")
+
+    config
+      .root()
+      .keySet()
+      .asScala
+      .map { sensorId =>
+        val sensorConfig = config.getConfig(sensorId)
+
+        val periods = sensorConfig
+          .getConfigList("periods")
+          .asScala
+          .map { p =>
+            SchedulePeriod(
+              start = LocalTime.parse(p.getString("start")),
+              end = LocalTime.parse(p.getString("end")),
+              temperature = p.getDouble("temperature")
+            )
+          }
+          .toSeq
+
+        sensorId -> ScheduleDay(periods)
+      }
+      .toMap
+  }
 }

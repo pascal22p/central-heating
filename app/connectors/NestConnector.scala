@@ -15,7 +15,7 @@ import uk.gov.hmrc.http.HttpReads.Implicits.*
 
 import cats.data.EitherT
 import config.AppConfig
-import models.{ NestDevice, NestToken }
+import models.nest.{ NestDevice, NestToken }
 import queries.NestAuthorisationQueries
 
 @Singleton

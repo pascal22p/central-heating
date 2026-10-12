@@ -1,4 +1,4 @@
-package models
+package models.nest
 
 final case class NestToken(
     accessToken: String,

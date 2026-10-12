@@ -6,20 +6,20 @@ import play.api.mvc.{ Action, AnyContent, BaseController, ControllerComponents }
 import scala.concurrent.ExecutionContext
 
 import actions.AuthJourney
-import services.TrvService
+import services.DevicesService
 import views.html.TrvsView
 
 class TrvController @Inject() (
     val controllerComponents: ControllerComponents,
     authAction: AuthJourney,
-    trvService: TrvService,
+    devicesService: DevicesService,
     trvsView: TrvsView
 )(implicit ec: ExecutionContext)
     extends BaseController
     with I18nSupport {
 
   def index(): Action[AnyContent] = authAction.guestAccess.async { implicit authenticatedRequest =>
-    trvService.getTrvs.map { trvs =>
+    devicesService.getTrvs.map { trvs =>
       Ok(trvsView(trvs))
     }
   }

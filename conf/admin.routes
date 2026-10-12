@@ -6,3 +6,6 @@ GET     /nest/oauth/callback   controllers.admin.NestAdminController.oauthCallba
 GET     /nest/set/temperature/:temperature controllers.admin.NestAdminController.setTemperature(temperature: Double)
 
 GET     /graphite/nest    controllers.admin.GraphiteController.pushNest
+
+GET   /schedule/*topic   controllers.admin.ScheduleController.edit(topic: String)
+POST  /schedule/*topic   controllers.admin.ScheduleController.save(topic: String)
