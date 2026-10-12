@@ -7,7 +7,7 @@ import utils.EnumFormats
 
 final case class Trv(
     name: String,
-    battery: Int,
+    battery: Option[Int],
     externalTemperatureInput: Double,
     heatPercentageHour: Double,
     linkQuality: Int,
@@ -36,7 +36,7 @@ object Trv {
     Reads { json =>
       for
         battery <-
-          (json \ "battery").validate[Int]
+          (json \ "battery").validateOpt[Int]
 
         externalTemperatureInput <-
           (json \ "external_temperature_input")

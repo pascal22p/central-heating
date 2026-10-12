@@ -110,7 +110,9 @@
                 Battery
               </dt>
               <dd class="govuk-summary-list__value">
-                @trv.battery%
+                @for(battery <- trv.battery) {
+                  @battery%
+                }
               </dd>
             </div>
 
