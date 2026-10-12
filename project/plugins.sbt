@@ -3,7 +3,7 @@ addSbtPlugin("org.playframework" % "sbt-plugin" % "3.0.12")
 
 addSbtPlugin("com.typesafe.sbt" % "sbt-digest" % "1.1.4")
 
-addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.12.0")
+addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.13.0")
 
 addSbtPlugin("org.scalameta"       % "sbt-scalafmt"             % "2.6.2")
 
