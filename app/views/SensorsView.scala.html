@@ -1,0 +1,78 @@
+@import models.mqtt.TemperatureSensor
+
+@this(
+  main: Main
+)
+
+@(sensors: Seq[TemperatureSensor])(implicit authenticatedRequest: AuthenticatedRequest[?], messages: Messages)
+
+@main() {
+  <div class="govuk-width-container">
+    <main class="govuk-main-wrapper" id="main-content">
+
+      <div class="govuk-grid-row">
+        <div class="govuk-grid-column-two-thirds">
+
+          <h1 class="govuk-heading-xl">Temperature sensors</h1>
+
+        @if(sensors.isEmpty) {
+          <div class="govuk-inset-text">
+            No temperature sensor state has been received yet.
+          </div>
+        } else {
+          <p class="govuk-body">
+            @sensors.size temperature sensor@if(sensors.size != 1) {s} currently reporting.
+          </p>
+        }
+
+        </div>
+      </div>
+
+    @for(sensor <- sensors.sortBy(_.name)) {
+      <div class="govuk-summary-card">
+        <div class="govuk-summary-card__title-wrapper">
+          <h2 class="govuk-summary-card__title">
+            @sensor.name
+          </h2>
+        </div>
+
+        <div class="govuk-summary-card__content">
+
+          <dl class="govuk-summary-list">
+
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">
+                Temperature
+              </dt>
+              <dd class="govuk-summary-list__value">
+                @String.format("%.1f °C", sensor.temperature)
+              </dd>
+            </div>
+
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">
+                Humidity
+              </dt>
+              <dd class="govuk-summary-list__value">
+                @String.format("%.1f °C", sensor.humidity)
+              </dd>
+            </div>
+
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">
+                Battery
+              </dt>
+              <dd class="govuk-summary-list__value">
+                @sensor.battery%
+              </dd>
+            </div>
+
+          </dl>
+
+        </div>
+      </div>
+    }
+
+    </main>
+  </div>
+}

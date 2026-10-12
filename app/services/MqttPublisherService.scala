@@ -45,4 +45,14 @@ class MqttPublisherService @Inject() (
         )
       )
       .runWith(sink)
+
+  def requestTemperatureState(device: String): Future[Done] =
+    Source
+      .single(
+        MqttMessage(
+          s"${device}/get",
+          ByteString("""{"temperature":""}""")
+        )
+      )
+      .runWith(sink)
 }

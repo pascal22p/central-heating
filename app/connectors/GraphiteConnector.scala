@@ -8,7 +8,8 @@ import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.{ Failure, Success, Using }
 
 import config.AppConfig
-import models.{ LoggingWithRequest, NestDevice }
+import models.nest.{ Connectivity, EcoMode, HvacStatus, NestDevice, ThermostatMode }
+import models.LoggingWithRequest
 
 class GraphiteConnector @Inject() (
     appConfig: AppConfig
@@ -17,6 +18,7 @@ class GraphiteConnector @Inject() (
 
   private val metricPrefix = appConfig.graphitePrefix
 
+  @SuppressWarnings(Array("org.wartremover.warts.ToString"))
   def send(device: NestDevice): Future[Unit] =
     Future {
       val timestamp = System.currentTimeMillis() / 1000
@@ -33,23 +35,31 @@ class GraphiteConnector @Inject() (
         metric("eco_cool_celsius", device.traits.ecoCoolCelsius, timestamp),
         binaryMetric(
           "thermostat_mode",
-          device.traits.thermostatMode,
-          "HEAT",
-          "OFF",
+          device.traits.connectivity.toString,
+          Connectivity.OFFLINE.toString,
+          Connectivity.ONLINE.toString,
           timestamp
         ),
         binaryMetric(
+          "thermostat_mode",
+          device.traits.thermostatMode.toString,
+          ThermostatMode.HEAT.toString,
+          ThermostatMode.OFF.toString,
+          timestamp
+        ),
+        ternaryMetric(
           "hvac_status",
-          device.traits.hvacStatus,
-          "HEATING",
-          "OFF",
+          device.traits.hvacStatus.toString,
+          HvacStatus.COOLING.toString,
+          HvacStatus.OFF.toString,
+          HvacStatus.HEATING.toString,
           timestamp
         ),
         binaryMetric(
           "eco_mode",
-          device.traits.ecoMode,
-          "MANUAL_ECO",
-          "OFF",
+          device.traits.ecoMode.toString,
+          EcoMode.MANUAL_ECO.toString,
+          EcoMode.OFF.toString,
           timestamp
         )
       ) ++ optValues
@@ -129,6 +139,33 @@ class GraphiteConnector @Inject() (
         val ex = new RuntimeException(
           s"Invalid value for metric '$name': '$other' " +
             s"(expected '$onValue' or '$offValue')"
+        )
+        logger.error(ex.getMessage)
+        throw ex
+    }
+
+  private def ternaryMetric(
+      name: String,
+      value: String,
+      minusValue: String,
+      offValue: String,
+      plusValue: String,
+      timestamp: Long
+  ): String =
+    value match {
+      case `minusValue` =>
+        metric(name, -1, timestamp)
+
+      case `offValue` =>
+        metric(name, 0, timestamp)
+
+      case `plusValue` =>
+        metric(name, 1, timestamp)
+
+      case other =>
+        val ex = new RuntimeException(
+          s"Invalid value for metric '$name': '$other' " +
+            s"(expected '$minusValue', '$plusValue' or '$offValue')"
         )
         logger.error(ex.getMessage)
         throw ex

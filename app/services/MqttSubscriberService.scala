@@ -17,15 +17,15 @@ import org.apache.pekko.Done
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
 import config.AppConfig
-import models.Trv
-import queries.TrvQueries
+import models.mqtt.{ TemperatureSensor, Trv }
+import queries.DevicesQueries
 
 @Singleton
 class MqttSubscriberService @Inject() (
     appConfig: AppConfig,
     lifecycle: ApplicationLifecycle,
     actorSystem: ActorSystem,
-    trvQueries: TrvQueries,
+    devicesQueries: DevicesQueries,
     heatingControlService: HeatingControlService
 )(implicit ec: ExecutionContext)
     extends Logging {
@@ -46,12 +46,17 @@ class MqttSubscriberService @Inject() (
       persistence = new MemoryPersistence
     ).withKeepAliveInterval(30.seconds)
 
-  private val subscriptions =
+  private val subscriptions = {
+    logger.info(s"Subscribing to topics: ${appConfig.trvDevices} and ${appConfig.temperatureDevices}")
     MqttSubscriptions(
       appConfig.trvDevices.map { device =>
         device -> MqttQoS.AtLeastOnce
-      }.toMap
+      }.toMap ++
+        appConfig.temperatureDevices.map { device =>
+          device -> MqttQoS.AtLeastOnce
+        }.toMap
     )
+  }
 
   private val restartSettings =
     RestartSettings(
@@ -95,10 +100,22 @@ class MqttSubscriberService @Inject() (
           s"Received MQTT message on topic ${message.topic}: ${message.payload.utf8String}"
         )
 
-        handleTrvMessage(
-          message.topic,
-          message.payload.utf8String
-        )
+        message.topic match {
+          case topic if appConfig.trvDevices.contains(topic) =>
+            handleTrvMessage(
+              message.topic,
+              message.payload.utf8String
+            )
+
+          case topic if appConfig.temperatureDevices.contains(topic) =>
+            handleTemperatureMessage(
+              message.topic,
+              message.payload.utf8String
+            )
+
+          case topic => throw new RuntimeException(s"invalid topic `$topic`")
+        }
+
       }
       .runWith(Sink.ignore)
 
@@ -123,20 +140,51 @@ class MqttSubscriberService @Inject() (
       receivedTopic: String,
       payload: String
   ): Future[Unit] = {
-    logger.debug(payload)
-
     Json.parse(payload).validate[Trv] match {
       case JsSuccess(state, _) =>
         val trv =
           state.copy(name = receivedTopic)
 
-        trvQueries
+        devicesQueries
           .saveTrv(trv)
           .flatMap { _ =>
             logger.info(
               s"TRV state saved for $receivedTopic: $trv"
             )
             heatingControlService.onTrvUpdate(trv)
+          }
+          .recover {
+            case NonFatal(error) =>
+              logger.error(
+                s"Failed to save TRV state for $receivedTopic",
+                error
+              )
+          }
+
+      case JsError(errors) =>
+        errors.foreach { case (path, errs) => logger.error(s"$path -> ${errs.map(_.message).mkString(", ")}") }
+        throw new RuntimeException(JsError.toJson(JsError(errors)).toString)
+    }
+  }
+
+  private def handleTemperatureMessage(
+      receivedTopic: String,
+      payload: String
+  ): Future[Unit] = {
+    logger.debug(payload)
+
+    Json.parse(payload).validate[TemperatureSensor] match {
+      case JsSuccess(state, _) =>
+        val temperatureSensor =
+          state.copy(name = receivedTopic)
+
+        devicesQueries
+          .saveTemperatureSensor(temperatureSensor)
+          .flatMap { _ =>
+            logger.info(
+              s"Temperature sensor state saved for $receivedTopic: $temperatureSensor"
+            )
+            heatingControlService.onTemperatureSensorUpdate(temperatureSensor)
           }
           .recover {
             case NonFatal(error) =>

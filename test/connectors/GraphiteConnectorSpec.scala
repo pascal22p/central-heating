@@ -8,7 +8,7 @@ import scala.concurrent.ExecutionContext
 
 import org.mockito.Mockito.when
 
-import models.{ NestDevice, NestTraits }
+import models.nest.{ Connectivity, EcoMode, HvacStatus, NestDevice, NestTraits, ThermostatMode }
 import testUtils.BaseSpec
 
 class GraphiteConnectorSpec extends BaseSpec {
@@ -57,14 +57,14 @@ class GraphiteConnectorSpec extends BaseSpec {
           name = "Nest Thermostat",
           deviceType = "sdm.devices.types.THERMOSTAT",
           traits = NestTraits(
-            connectivity = "ONLINE",
+            connectivity = Connectivity.ONLINE,
             temperatureCelsius = 19.5,
             humidityPercent = 54.0,
-            thermostatMode = "HEAT",
+            thermostatMode = ThermostatMode.HEAT,
             heatSetpointCelsius = Some(21.0),
             coolSetpointCelsius = Some(25.0),
-            hvacStatus = "OFF",
-            ecoMode = "MANUAL_ECO",
+            hvacStatus = HvacStatus.OFF,
+            ecoMode = EcoMode.MANUAL_ECO,
             ecoHeatCelsius = 16.0,
             ecoCoolCelsius = 24.0
           )
@@ -79,7 +79,7 @@ class GraphiteConnectorSpec extends BaseSpec {
           payload.trim.linesIterator.toSeq
 
         println(lines)
-        lines.size mustBe 9
+        lines.size mustBe 10
 
         lines.exists(_.startsWith("heating.nest.temperature_celsius 19.5 ")) mustBe true
         lines.exists(_.startsWith("heating.nest.humidity_percent 54.0 ")) mustBe true
@@ -139,14 +139,14 @@ class GraphiteConnectorSpec extends BaseSpec {
           name = "Nest Thermostat",
           deviceType = "sdm.devices.types.THERMOSTAT",
           traits = NestTraits(
-            connectivity = "",
+            connectivity = Connectivity.ONLINE,
             temperatureCelsius = 0,
             humidityPercent = 0,
-            thermostatMode = "OFF",
+            thermostatMode = ThermostatMode.OFF,
             heatSetpointCelsius = None,
             coolSetpointCelsius = None,
-            hvacStatus = "OFF",
-            ecoMode = "OFF",
+            hvacStatus = HvacStatus.OFF,
+            ecoMode = EcoMode.OFF,
             ecoHeatCelsius = 0,
             ecoCoolCelsius = 0
           )
@@ -208,14 +208,14 @@ class GraphiteConnectorSpec extends BaseSpec {
           name = "Nest Thermostat",
           deviceType = "sdm.devices.types.THERMOSTAT",
           traits = NestTraits(
-            connectivity = "",
+            connectivity = Connectivity.ONLINE,
             temperatureCelsius = 19.5,
             humidityPercent = 54.0,
-            thermostatMode = "HEAT",
+            thermostatMode = ThermostatMode.HEAT,
             heatSetpointCelsius = Some(21.0),
             coolSetpointCelsius = Some(25.0),
-            hvacStatus = "OFF",
-            ecoMode = "OFF",
+            hvacStatus = HvacStatus.OFF,
+            ecoMode = EcoMode.OFF,
             ecoHeatCelsius = 16.0,
             ecoCoolCelsius = 24.0
           )
