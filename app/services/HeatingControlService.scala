@@ -97,14 +97,14 @@ class HeatingControlService @Inject() (
         } else {
           nestConnector.getDevice().flatMap { device =>
             if (device.traits.thermostatMode == ThermostatMode.HEAT && device.traits.hvacStatus == HvacStatus.HEATING) {
-              EitherT.liftF(canHeatingBeTurnedOff.map {
+              EitherT.liftF(canHeatingBeTurnedOff).flatMap {
                 case true =>
                   logger.info(s"Idle requested by ${sensor.name} and heating is on, turning heating off")
                   nestConnector.setTemperature(appConfig.heatingDemandStandbyTemperatureCelsius)
 
                 case false =>
                   EitherT.rightT[Future, UpstreamErrorResponse](())
-              })
+              }
             } else {
               if (device.traits.thermostatMode != ThermostatMode.HEAT) {
                 logger.info("The thermostat is OFF on summer mode. Heating cannot be turned on.")
@@ -179,7 +179,7 @@ class HeatingControlService @Inject() (
         val temperatureTarget = schedules
           .get(sensor.name)
           .flatMap(_.periods.find(period => !now.isBefore(period.start) && !now.isAfter(period.end)))
-          .fold(0.0)(_.temperature)
+          .fold(appConfig.heatingDemandStandbyTemperatureCelsius)(_.temperature)
         if (sensor.temperature <= temperatureTarget) {
           logger.info(s"Sensor ${sensor.name} is requesting HEAT")
         }

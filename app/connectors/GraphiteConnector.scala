@@ -36,8 +36,8 @@ class GraphiteConnector @Inject() (
         binaryMetric(
           "connectivity",
           device.traits.connectivity.toString,
-          Connectivity.OFFLINE.toString,
           Connectivity.ONLINE.toString,
+          Connectivity.OFFLINE.toString,
           timestamp
         ),
         binaryMetric(
