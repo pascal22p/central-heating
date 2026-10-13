@@ -1,9 +1,10 @@
 package jobs
 
+import java.util.UUID
 import scala.concurrent.{ Await, ExecutionContext, Future }
 import scala.concurrent.duration.DurationInt
 
-import uk.gov.hmrc.http.{ HeaderCarrier, UpstreamErrorResponse }
+import uk.gov.hmrc.http.{ HeaderCarrier, RequestId, UpstreamErrorResponse }
 
 import org.apache.pekko.actor.Actor
 
@@ -26,14 +27,13 @@ class NestMetricsToGraphiteJob(
 
   def receive: Receive = {
     case RunJob => {
+      implicit val hc: HeaderCarrier = HeaderCarrier(requestId = Some(RequestId(UUID.randomUUID().toString)))
       logger.info("\u001b[35m Starting scheduled job nest metrics to graphite\u001b[0m")
       val span = tracer
         .spanBuilder("NestMetricsToGraphiteJob")
         .setSpanKind(SpanKind.INTERNAL)
         .startSpan()
       val scope = span.makeCurrent()
-
-      implicit val hc: HeaderCarrier = HeaderCarrier()
 
       try {
         Await.result(

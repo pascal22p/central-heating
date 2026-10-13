@@ -1,5 +1,6 @@
 package config
 
+import java.time.{ Clock, ZoneId }
 import play.api.{ Configuration, Environment, Logging }
 import play.api.inject.{ Binding, Module }
 
@@ -25,6 +26,10 @@ class AppModules extends Module with Logging {
       Seq.empty
     }
 
-    Seq(bind[HttpClientV2].toProvider[HttpClientV2Provider]) ++ nestScheduler ++ mqttSubscriber
+    Seq(
+      bind[HttpClientV2].toProvider[HttpClientV2Provider],
+      bind[Clock]
+        .toInstance(Clock.system(ZoneId.of("Europe/London")))
+    ) ++ nestScheduler ++ mqttSubscriber
   }
 }

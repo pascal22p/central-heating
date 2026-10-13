@@ -1,12 +1,14 @@
 package services
 
+import java.util.UUID
 import javax.inject.{ Inject, Singleton }
 import play.api.inject.ApplicationLifecycle
 import play.api.libs.json.*
-import play.api.Logging
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.concurrent.duration.DurationInt
 import scala.util.control.NonFatal
+
+import uk.gov.hmrc.http.{ HeaderCarrier, RequestId }
 
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.{ Materializer, RestartSettings, SystemMaterializer }
@@ -18,6 +20,7 @@ import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
 import config.AppConfig
 import models.mqtt.{ TemperatureSensor, Trv }
+import models.LoggingWithRequest
 import queries.DevicesQueries
 
 @Singleton
@@ -28,7 +31,7 @@ class MqttSubscriberService @Inject() (
     devicesQueries: DevicesQueries,
     heatingControlService: HeatingControlService
 )(implicit ec: ExecutionContext)
-    extends Logging {
+    extends LoggingWithRequest {
 
   private given Materializer =
     SystemMaterializer(actorSystem).materializer
@@ -96,6 +99,8 @@ class MqttSubscriberService @Inject() (
           }
       }
       .mapAsync(1) { message =>
+        implicit val hc: HeaderCarrier = HeaderCarrier(requestId = Some(RequestId(UUID.randomUUID().toString)))
+
         logger.info(
           s"Received MQTT message on topic ${message.topic}: ${message.payload.utf8String}"
         )
@@ -139,7 +144,7 @@ class MqttSubscriberService @Inject() (
   private def handleTrvMessage(
       receivedTopic: String,
       payload: String
-  ): Future[Unit] = {
+  )(implicit hc: HeaderCarrier): Future[Unit] = {
     Json.parse(payload).validate[Trv] match {
       case JsSuccess(state, _) =>
         val trv =
@@ -170,7 +175,7 @@ class MqttSubscriberService @Inject() (
   private def handleTemperatureMessage(
       receivedTopic: String,
       payload: String
-  ): Future[Unit] = {
+  )(implicit hc: HeaderCarrier): Future[Unit] = {
     logger.debug(payload)
 
     Json.parse(payload).validate[TemperatureSensor] match {

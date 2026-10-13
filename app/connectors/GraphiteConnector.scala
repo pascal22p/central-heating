@@ -7,6 +7,8 @@ import javax.inject.Inject
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.{ Failure, Success, Using }
 
+import uk.gov.hmrc.http.HeaderCarrier
+
 import config.AppConfig
 import models.nest.{ Connectivity, EcoMode, HvacStatus, NestDevice, ThermostatMode }
 import models.LoggingWithRequest
@@ -19,7 +21,7 @@ class GraphiteConnector @Inject() (
   private val metricPrefix = appConfig.graphitePrefix
 
   @SuppressWarnings(Array("org.wartremover.warts.ToString"))
-  def send(device: NestDevice): Future[Unit] =
+  def send(device: NestDevice)(implicit hc: HeaderCarrier): Future[Unit] =
     Future {
       val timestamp = System.currentTimeMillis() / 1000
 
@@ -127,7 +129,7 @@ class GraphiteConnector @Inject() (
       onValue: String,
       offValue: String,
       timestamp: Long
-  ): String =
+  )(implicit hc: HeaderCarrier): String =
     value match {
       case `onValue` =>
         metric(name, 1, timestamp)
@@ -151,7 +153,7 @@ class GraphiteConnector @Inject() (
       offValue: String,
       plusValue: String,
       timestamp: Long
-  ): String =
+  )(implicit hc: HeaderCarrier): String =
     value match {
       case `minusValue` =>
         metric(name, -1, timestamp)

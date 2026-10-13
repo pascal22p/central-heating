@@ -16,7 +16,7 @@ trait MariadbHelper extends BaseSpec with BeforeAndAfterEach with LoggingWithReq
   lazy val db: Database                  = app.injector.instanceOf[Database]
   implicit lazy val ec: ExecutionContext = app.injector.instanceOf[ExecutionContext]
 
-  val testDataBase: String = "uk-fuel-prices-test"
+  val testDataBase: String = "central-heating-test"
 
   implicit override lazy val app: Application = localGuiceApplicationBuilder()
     .configure(
