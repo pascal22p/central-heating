@@ -5,6 +5,9 @@ import play.api.i18n.I18nSupport
 import play.api.mvc.{ Action, AnyContent, BaseController, ControllerComponents }
 import scala.concurrent.ExecutionContext
 
+import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.play.http.HeaderCarrierConverter
+
 import actions.AuthJourney
 import services.DevicesService
 import views.html.SensorsView
@@ -19,6 +22,8 @@ class TemperatureSensorController @Inject() (
     with I18nSupport {
 
   def index(): Action[AnyContent] = authAction.guestAccess.async { implicit authenticatedRequest =>
+    given HeaderCarrier = HeaderCarrierConverter.fromRequest(authenticatedRequest)
+
     devicesService.getTemperatureSensors.map { sensors =>
       Ok(sensorsView(sensors))
     }

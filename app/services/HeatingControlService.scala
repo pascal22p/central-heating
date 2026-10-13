@@ -26,173 +26,113 @@ class HeatingControlService @Inject() (
 )(implicit ec: ExecutionContext)
     extends LoggingWithRequest {
 
+  private type Result = EitherT[Future, UpstreamErrorResponse, Unit]
+
+  private val noAction: Result = EitherT.rightT(())
+
   def onTrvUpdate(trv: Trv)(implicit hc: HeaderCarrier): Future[Unit] =
-    if (!appConfig.heatingControlIsEnabled || !appConfig.trvControlIsEnabled) {
-      logger.warn(
-        s"Heating control disabled. Heating control: ${appConfig.heatingControlIsEnabled}, Trv control: ${appConfig.trvControlIsEnabled}"
-      )
-      Future.unit
-    } else {
-      logger.info("Heating control is enabled for Trvs")
+    handle("Trv", trv.name, appConfig.trvControlIsEnabled) {
+      trv.runningState match {
+        case RunningState.Heat =>
+          logger.info(s"Trv `${trv.name}` is reporting HEAT")
+          turnHeatingOn(s"Heat requested by ${trv.name}")
 
-      val action: EitherT[Future, UpstreamErrorResponse, Unit] =
-        trv.runningState match {
-          case RunningState.Heat =>
-            logger.info(s"Trv `${trv.name}` is reporting HEAT")
-            turnOnIfOff(trv)
-          case RunningState.Idle =>
-            logger.info(s"Trv `${trv.name}` is reporting IDLE")
-            turnOffIfAllIdle
-        }
-
-      action.value
-        .map {
-          case Right(_) =>
-            ()
-          case Left(error) => logger.error(s"Failed to update heating for ${trv.name}: ${error.message}")
-        }
-        .recover {
-          case NonFatal(e) => logger.error(s"Unexpected error updating heating for ${trv.name}", e)
-        }
+        case RunningState.Idle =>
+          logger.info(s"Trv `${trv.name}` is reporting IDLE")
+          turnHeatingOff(s"Idle requested by ${trv.name}")
+      }
     }
 
   def onTemperatureSensorUpdate(sensor: TemperatureSensor)(implicit hc: HeaderCarrier): Future[Unit] =
-    if (!appConfig.heatingControlIsEnabled || !appConfig.sensorControlIsEnabled) {
+    handle("Sensor", sensor.name, appConfig.sensorControlIsEnabled) {
+      EitherT.liftF[Future, UpstreamErrorResponse, Double](targetTemperature(sensor.name)).flatMap { target =>
+        if (sensor.temperature < target) {
+          turnHeatingOn(s"Heat requested by ${sensor.name} (sensor ${sensor.temperature}deg, target ${target}deg)")
+        } else {
+          turnHeatingOff(s"Idle requested by ${sensor.name}")
+        }
+      }
+    }
+
+  private def handle(kind: String, name: String, specificEnabled: Boolean)(
+      action: => Result
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    if (appConfig.heatingControlIsEnabled && specificEnabled) {
+      logger.info(s"Heating control is enabled for $kind")
+      action.value
+        .map {
+          case Right(_)    => logger.debug(s"Heating control finished successfully for $name")
+          case Left(error) => logger.error(s"Failed to update heating for $name: ${error.message}")
+        }
+        .recover {
+          case NonFatal(e) =>
+            logger.error(s"Unexpected error updating heating for $name", e)
+        }
+    } else {
       logger.warn(
-        s"Heating control disabled. Heating control: ${appConfig.heatingControlIsEnabled}, Sensor control: ${appConfig.sensorControlIsEnabled}"
+        s"Heating control disabled. Heating control: ${appConfig.heatingControlIsEnabled}, $kind control: $specificEnabled"
       )
       Future.unit
-    } else {
-      logger.info("Heating control is enabled for temperature Sensors")
-
-      val now = LocalTime.now(clock)
-
-      val targetTemperatureF = scheduleQueries.getSchedule(sensor.name).map { schedule =>
-        schedule.periods
-          .find { period =>
-            !now.isBefore(period.start) && !now.isAfter(period.end)
-          }
-          .map(_.temperature)
-          .getOrElse {
-            logger.info(s"No schedule period found for ${sensor.name} and time $now.")
-            appConfig.heatingDemandStandbyTemperatureCelsius
-          }
-      }
-
-      targetTemperatureF.flatMap { targetTemperature =>
-        val action = if (sensor.temperature < targetTemperature) {
-          nestConnector.getDevice().flatMap { device =>
-            if (device.traits.thermostatMode == ThermostatMode.HEAT && device.traits.hvacStatus == HvacStatus.OFF) {
-              logger.info(
-                s"Heat requested by ${sensor.name} and heating is off, turning heating on. Sensor temperature is ${sensor.temperature}deg and the target temperature is $targetTemperature"
-              )
-              nestConnector.setTemperature(appConfig.heatingDemandActiveTemperatureCelsius)
-            } else {
-              if (device.traits.thermostatMode != ThermostatMode.HEAT) {
-                logger.info("The thermostat is OFF on summer mode. Heating cannot be turned on.")
-              }
-              EitherT.rightT[Future, UpstreamErrorResponse](())
-            }
-          }
-        } else {
-          nestConnector.getDevice().flatMap { device =>
-            if (device.traits.thermostatMode == ThermostatMode.HEAT && device.traits.hvacStatus == HvacStatus.HEATING) {
-              EitherT.liftF(canHeatingBeTurnedOff).flatMap {
-                case true =>
-                  logger.info(s"Idle requested by ${sensor.name} and heating is on, turning heating off")
-                  nestConnector.setTemperature(appConfig.heatingDemandStandbyTemperatureCelsius)
-
-                case false =>
-                  EitherT.rightT[Future, UpstreamErrorResponse](())
-              }
-            } else {
-              if (device.traits.thermostatMode != ThermostatMode.HEAT) {
-                logger.info("The thermostat is OFF on summer mode. Heating cannot be turned on.")
-              } else {
-                logger.debug("The thermostat is already heating")
-              }
-              EitherT.rightT[Future, UpstreamErrorResponse](())
-            }
-          }
-        }
-
-        action.value
-          .map {
-            case Right(_) =>
-              logger.debug("Heating control finished successfully for temperature Sensors")
-              ()
-            case Left(error) => logger.error(s"Failed to update heating for ${sensor.name}: ${error.message}")
-          }
-          .recover {
-            case NonFatal(e) => logger.error(s"Unexpected error updating heating for ${sensor.name}", e)
-          }
-      }
     }
 
-  private def turnOnIfOff(trv: Trv)(implicit hc: HeaderCarrier): EitherT[Future, UpstreamErrorResponse, Unit] = {
+  private def turnHeatingOn(reason: String)(implicit hc: HeaderCarrier): Result =
     nestConnector.getDevice().flatMap { device =>
-      if (device.traits.thermostatMode == ThermostatMode.HEAT && device.traits.hvacStatus == HvacStatus.OFF) {
-        logger.info(s"Heat requested by ${trv.name} and heating is off, turning heating on")
+      if (device.traits.thermostatMode != ThermostatMode.HEAT) {
+        logger.info("The thermostat is OFF on summer mode. Heating cannot be turned on.")
+        noAction
+      } else if (device.traits.hvacStatus == HvacStatus.OFF) {
+        logger.info(s"$reason and heating is off, turning heating on")
         nestConnector.setTemperature(appConfig.heatingDemandActiveTemperatureCelsius)
       } else {
-        if (device.traits.thermostatMode != ThermostatMode.HEAT) {
-          logger.info("The thermostat is OFF on summer mode. Heating cannot be turned on.")
-        }
-        if (device.traits.hvacStatus == HvacStatus.HEATING) {
-          logger.info(s"The heating is already on")
-        }
-        EitherT.rightT[Future, UpstreamErrorResponse](())
+        logger.debug("The heating is already on")
+        noAction
       }
     }
-  }
 
-  private def turnOffIfAllIdle(implicit hc: HeaderCarrier): EitherT[Future, UpstreamErrorResponse, Unit] =
-    EitherT.liftF(devicesService.getTrvs).flatMap { trvs =>
-      if (trvs.forall(_.runningState == RunningState.Idle)) {
-        nestConnector.getDevice().flatMap { device =>
-          if (device.traits.thermostatMode == ThermostatMode.HEAT && device.traits.hvacStatus == HvacStatus.HEATING) {
-            logger.info(s"All TRVs are requesting idle and heating is on, turning heating off")
+  // Guard 1: Nest state. Guard 2: no device anywhere wants heat.
+  private def turnHeatingOff(reason: String)(implicit hc: HeaderCarrier): Result =
+    nestConnector.getDevice().flatMap { device =>
+      if (device.traits.thermostatMode != ThermostatMode.HEAT) {
+        logger.info("The thermostat is OFF on summer mode. Nothing to turn off.")
+        noAction
+      } else if (device.traits.hvacStatus != HvacStatus.HEATING) {
+        logger.debug("The heating is already off")
+        noAction
+      } else {
+        EitherT.liftF[Future, UpstreamErrorResponse, Seq[String]](devicesRequestingHeat).flatMap { requesting =>
+          if (requesting.isEmpty) {
+            logger.info(s"$reason and heating is on, turning heating off")
             nestConnector.setTemperature(appConfig.heatingDemandStandbyTemperatureCelsius)
           } else {
-            if (device.traits.thermostatMode != ThermostatMode.HEAT) {
-              logger.info("The thermostat is OFF on summer mode.")
-            }
-            if (device.traits.hvacStatus == HvacStatus.HEATING) {
-              logger.info(s"The heating is already on")
-            }
-            EitherT.rightT(())
+            logger.info(s"Not turning heating off, heat requested by: ${requesting.mkString(", ")}")
+            noAction
           }
         }
-      } else EitherT.rightT(())
+      }
     }
 
-  private def canHeatingBeTurnedOff(implicit hc: HeaderCarrier): Future[Boolean] = {
+  private def devicesRequestingHeat(implicit hc: HeaderCarrier): Future[Seq[String]] =
     for {
-      sensors   <- devicesService.getTemperatureSensors
-      schedules <- sensors
-        .traverse(sensor => scheduleQueries.getSchedule(sensor.name).map(sensor.name -> _))
-        .map(_.toMap)
-      trvs <- devicesService.getTrvs
+      sensors <- devicesService.getTemperatureSensors
+      targets <- sensors.traverse(s => targetTemperature(s.name).map(s -> _))
+      trvs    <- devicesService.getTrvs
     } yield {
-      val now          = LocalTime.now(clock)
-      val sensorsCheck = sensors.forall { sensor =>
-        val temperatureTarget = schedules
-          .get(sensor.name)
-          .flatMap(_.periods.find(period => !now.isBefore(period.start) && !now.isAfter(period.end)))
-          .fold(appConfig.heatingDemandStandbyTemperatureCelsius)(_.temperature)
-        if (sensor.temperature <= temperatureTarget) {
-          logger.info(s"Sensor ${sensor.name} is requesting HEAT")
-        }
-        sensor.temperature > temperatureTarget
-      }
-
-      trvs.filter(_.runningState != RunningState.Idle).foreach { trv =>
-        logger.info(s"Trv ${trv.name} is requesting HEAT")
-      }
-
-      trvs.forall(_.runningState == RunningState.Idle) && sensorsCheck
+      val sensorsWanting = targets.collect { case (s, target) if s.temperature <= target => s.name }
+      val trvsWanting    = trvs.filter(_.runningState != RunningState.Idle).map(_.name)
+      sensorsWanting ++ trvsWanting
     }
 
-  }
+  private def targetTemperature(sensorName: String)(implicit hc: HeaderCarrier): Future[Double] = {
+    val now = LocalTime.now(clock)
 
+    scheduleQueries.getSchedule(sensorName).map { schedule =>
+      schedule.periods
+        .find(period => !now.isBefore(period.start) && !now.isAfter(period.end))
+        .map(_.temperature)
+        .getOrElse {
+          logger.info(s"No schedule period found for $sensorName and time $now.")
+          appConfig.heatingDemandStandbyTemperatureCelsius
+        }
+    }
+  }
 }
