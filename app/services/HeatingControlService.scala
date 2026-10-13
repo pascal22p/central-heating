@@ -1,8 +1,7 @@
 package services
 
-import java.time.LocalTime
+import java.time.{ Clock, LocalTime }
 import javax.inject.{ Inject, Singleton }
-import play.api.Logging
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.control.NonFatal
 
@@ -14,6 +13,7 @@ import config.AppConfig
 import connectors.NestConnector
 import models.mqtt.{ RunningState, TemperatureSensor, Trv }
 import models.nest.{ HvacStatus, ThermostatMode }
+import models.LoggingWithRequest
 import queries.ScheduleQueries
 
 @Singleton
@@ -21,11 +21,12 @@ class HeatingControlService @Inject() (
     appConfig: AppConfig,
     nestConnector: NestConnector,
     devicesService: DevicesService,
-    scheduleQueries: ScheduleQueries
+    scheduleQueries: ScheduleQueries,
+    clock: Clock
 )(implicit ec: ExecutionContext)
-    extends Logging {
+    extends LoggingWithRequest {
 
-  def onTrvUpdate(trv: Trv): Future[Unit] =
+  def onTrvUpdate(trv: Trv)(implicit hc: HeaderCarrier): Future[Unit] =
     if (!appConfig.heatingControlIsEnabled || !appConfig.trvControlIsEnabled) {
       logger.warn(
         s"Heating control disabled. Heating control: ${appConfig.heatingControlIsEnabled}, Trv control: ${appConfig.trvControlIsEnabled}"
@@ -33,7 +34,6 @@ class HeatingControlService @Inject() (
       Future.unit
     } else {
       logger.info("Heating control is enabled for Trvs")
-      given HeaderCarrier = HeaderCarrier()
 
       val action: EitherT[Future, UpstreamErrorResponse, Unit] =
         trv.runningState match {
@@ -56,7 +56,7 @@ class HeatingControlService @Inject() (
         }
     }
 
-  def onTemperatureSensorUpdate(sensor: TemperatureSensor): Future[Unit] =
+  def onTemperatureSensorUpdate(sensor: TemperatureSensor)(implicit hc: HeaderCarrier): Future[Unit] =
     if (!appConfig.heatingControlIsEnabled || !appConfig.sensorControlIsEnabled) {
       logger.warn(
         s"Heating control disabled. Heating control: ${appConfig.heatingControlIsEnabled}, Sensor control: ${appConfig.sensorControlIsEnabled}"
@@ -65,9 +65,7 @@ class HeatingControlService @Inject() (
     } else {
       logger.info("Heating control is enabled for temperature Sensors")
 
-      given HeaderCarrier = HeaderCarrier()
-
-      val now = LocalTime.now
+      val now = LocalTime.now(clock)
 
       val targetTemperatureF = scheduleQueries.getSchedule(sensor.name).map { schedule =>
         schedule.periods
@@ -85,7 +83,9 @@ class HeatingControlService @Inject() (
         val action = if (sensor.temperature < targetTemperature) {
           nestConnector.getDevice().flatMap { device =>
             if (device.traits.thermostatMode == ThermostatMode.HEAT && device.traits.hvacStatus == HvacStatus.OFF) {
-              logger.info(s"Heat requested by ${sensor.name} and heating is off, turning heating on")
+              logger.info(
+                s"Heat requested by ${sensor.name} and heating is off, turning heating on. Sensor temperature is ${sensor.temperature}deg and the target temperature is $targetTemperature"
+              )
               nestConnector.setTemperature(appConfig.heatingDemandActiveTemperatureCelsius)
             } else {
               if (device.traits.thermostatMode != ThermostatMode.HEAT) {
@@ -166,7 +166,7 @@ class HeatingControlService @Inject() (
       } else EitherT.rightT(())
     }
 
-  private def canHeatingBeTurnedOff: Future[Boolean] = {
+  private def canHeatingBeTurnedOff(implicit hc: HeaderCarrier): Future[Boolean] = {
     for {
       sensors   <- devicesService.getTemperatureSensors
       schedules <- sensors
@@ -174,7 +174,7 @@ class HeatingControlService @Inject() (
         .map(_.toMap)
       trvs <- devicesService.getTrvs
     } yield {
-      val now          = LocalTime.now
+      val now          = LocalTime.now(clock)
       val sensorsCheck = sensors.forall { sensor =>
         val temperatureTarget = schedules
           .get(sensor.name)
