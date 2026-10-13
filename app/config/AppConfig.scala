@@ -94,21 +94,21 @@ class AppConfig @Inject() (configuration: Configuration) {
       "scheduler.nest.timeoutInSeconds"
     )
 
-  lazy val trvDevices: Seq[String] =
+  lazy val trvDevices: Set[String] =
     configuration
       .get[String](
         "microservice.services.mqtt.trv-devices"
       )
       .split(",")
-      .toSeq
+      .toSet
 
-  lazy val temperatureDevices: Seq[String] =
+  lazy val temperatureDevices: Set[String] =
     configuration
       .get[String](
         "microservice.services.mqtt.temperature-devices"
       )
       .split(",")
-      .toSeq
+      .toSet
 
   lazy val sensorControlIsEnabled: Boolean =
     configuration.get[Boolean](

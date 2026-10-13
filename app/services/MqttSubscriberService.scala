@@ -3,9 +3,9 @@ package services
 import java.util.UUID
 import javax.inject.{ Inject, Singleton }
 import play.api.inject.ApplicationLifecycle
-import play.api.libs.json.*
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.concurrent.duration.DurationInt
+import scala.util.{ Failure, Success }
 import scala.util.control.NonFatal
 
 import uk.gov.hmrc.http.{ HeaderCarrier, RequestId }
@@ -19,28 +19,24 @@ import org.apache.pekko.Done
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
 import config.AppConfig
-import models.mqtt.{ TemperatureSensor, Trv }
 import models.LoggingWithRequest
-import queries.DevicesQueries
 
 @Singleton
 class MqttSubscriberService @Inject() (
     appConfig: AppConfig,
     lifecycle: ApplicationLifecycle,
     actorSystem: ActorSystem,
-    devicesQueries: DevicesQueries,
-    heatingControlService: HeatingControlService
+    mqttMessageHandlerService: MqttMessageHandlerService
 )(implicit ec: ExecutionContext)
     extends LoggingWithRequest {
 
-  private given Materializer =
-    SystemMaterializer(actorSystem).materializer
+  private given Materializer = SystemMaterializer(actorSystem).materializer
 
-  private val brokerUrl =
-    appConfig.mqttBrokerUrl
+  private val brokerUrl = appConfig.mqttBrokerUrl
+  private val clientId  = s"${appConfig.mqttClientId}-${UUID.randomUUID()}"
 
-  private val clientId =
-    s"${appConfig.mqttClientId}-${java.util.UUID.randomUUID()}"
+  private val trvTopics         = appConfig.trvDevices
+  private val temperatureTopics = appConfig.temperatureDevices
 
   private val connectionSettings =
     MqttConnectionSettings(
@@ -50,77 +46,40 @@ class MqttSubscriberService @Inject() (
     ).withKeepAliveInterval(30.seconds)
 
   private val subscriptions = {
-    logger.info(s"Subscribing to topics: ${appConfig.trvDevices} and ${appConfig.temperatureDevices}")
-    MqttSubscriptions(
-      appConfig.trvDevices.map { device =>
-        device -> MqttQoS.AtLeastOnce
-      }.toMap ++
-        appConfig.temperatureDevices.map { device =>
-          device -> MqttQoS.AtLeastOnce
-        }.toMap
-    )
+    logger.info(s"Subscribing to topics: $trvTopics and $temperatureTopics")
+    MqttSubscriptions((trvTopics ++ temperatureTopics).map(_ -> MqttQoS.AtLeastOnce).toMap)
   }
 
   private val restartSettings =
-    RestartSettings(
-      minBackoff = 1.second,
-      maxBackoff = 30.seconds,
-      randomFactor = 0.2
-    )
+    RestartSettings(minBackoff = 1.second, maxBackoff = 30.seconds, randomFactor = 0.2)
 
   private val stream: Future[Done] =
     RestartSource
       .withBackoff(restartSettings) { () =>
-        logger.info(
-          s"Connecting to MQTT broker $brokerUrl"
-        )
+        logger.info(s"Connecting to MQTT broker $brokerUrl")
 
         MqttSource
-          .atMostOnce(
-            connectionSettings,
-            subscriptions,
-            bufferSize = 8
-          )
+          .atMostOnce(connectionSettings, subscriptions, bufferSize = 8)
           .watchTermination() { (_, termination) =>
-            termination.failed.foreach { error =>
-              logger.error(
-                s"MQTT connection lost: $brokerUrl",
-                error
-              )
+            termination.onComplete {
+              case Success(_)     => logger.info(s"MQTT connection terminated: $brokerUrl")
+              case Failure(error) => logger.error(s"MQTT connection lost: $brokerUrl", error)
             }
-
-            termination.foreach { _ =>
-              logger.info(
-                s"MQTT connection terminated: $brokerUrl"
-              )
-            }
-
             termination
           }
       }
       .mapAsync(1) { message =>
-        implicit val hc: HeaderCarrier = HeaderCarrier(requestId = Some(RequestId(UUID.randomUUID().toString)))
+        given HeaderCarrier = HeaderCarrier(requestId = Some(RequestId(UUID.randomUUID().toString)))
 
-        logger.info(
-          s"Received MQTT message on topic ${message.topic}: ${message.payload.utf8String}"
+        val topic   = message.topic
+        val payload = message.payload.utf8String
+
+        logger.debug(s"Received MQTT message on topic $topic: $payload")
+
+        mqttMessageHandlerService.handle(
+          topic,
+          payload
         )
-
-        message.topic match {
-          case topic if appConfig.trvDevices.contains(topic) =>
-            handleTrvMessage(
-              message.topic,
-              message.payload.utf8String
-            )
-
-          case topic if appConfig.temperatureDevices.contains(topic) =>
-            handleTemperatureMessage(
-              message.topic,
-              message.payload.utf8String
-            )
-
-          case topic => throw new RuntimeException(s"invalid topic `$topic`")
-        }
-
       }
       .runWith(Sink.ignore)
 
@@ -128,80 +87,13 @@ class MqttSubscriberService @Inject() (
     stream
       .recover {
         case NonFatal(e) =>
-          logger.warn(
-            "MQTT stream stopped with an error",
-            e
-          )
+          logger.warn("MQTT stream stopped with an error", e)
           Done
       }
       .map(_ => ())
   }
 
   logger.info(
-    s"MQTT service started: broker=$brokerUrl devices=${appConfig.trvDevices} clientId=$clientId"
+    s"MQTT service started: broker=$brokerUrl trvs=$trvTopics temperatureSensors=$temperatureTopics clientId=$clientId"
   )
-
-  private def handleTrvMessage(
-      receivedTopic: String,
-      payload: String
-  )(implicit hc: HeaderCarrier): Future[Unit] = {
-    Json.parse(payload).validate[Trv] match {
-      case JsSuccess(state, _) =>
-        val trv =
-          state.copy(name = receivedTopic)
-
-        devicesQueries
-          .saveTrv(trv)
-          .flatMap { _ =>
-            logger.info(
-              s"TRV state saved for $receivedTopic: $trv"
-            )
-            heatingControlService.onTrvUpdate(trv)
-          }
-          .recover {
-            case NonFatal(error) =>
-              logger.error(
-                s"Failed to save TRV state for $receivedTopic",
-                error
-              )
-          }
-
-      case JsError(errors) =>
-        errors.foreach { case (path, errs) => logger.error(s"$path -> ${errs.map(_.message).mkString(", ")}") }
-        throw new RuntimeException(JsError.toJson(JsError(errors)).toString)
-    }
-  }
-
-  private def handleTemperatureMessage(
-      receivedTopic: String,
-      payload: String
-  )(implicit hc: HeaderCarrier): Future[Unit] = {
-    logger.debug(payload)
-
-    Json.parse(payload).validate[TemperatureSensor] match {
-      case JsSuccess(state, _) =>
-        val temperatureSensor =
-          state.copy(name = receivedTopic)
-
-        devicesQueries
-          .saveTemperatureSensor(temperatureSensor)
-          .flatMap { _ =>
-            logger.info(
-              s"Temperature sensor state saved for $receivedTopic: $temperatureSensor"
-            )
-            heatingControlService.onTemperatureSensorUpdate(temperatureSensor)
-          }
-          .recover {
-            case NonFatal(error) =>
-              logger.error(
-                s"Failed to save temperature sensor state for $receivedTopic",
-                error
-              )
-          }
-
-      case JsError(errors) =>
-        errors.foreach { case (path, errs) => logger.error(s"$path -> ${errs.map(_.message).mkString(", ")}") }
-        throw new RuntimeException(JsError.toJson(JsError(errors)).toString)
-    }
-  }
 }

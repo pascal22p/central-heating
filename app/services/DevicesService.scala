@@ -1,12 +1,14 @@
 package services
 
 import javax.inject.{ Inject, Singleton }
-import play.api.Logging
 import scala.concurrent.{ ExecutionContext, Future }
+
+import uk.gov.hmrc.http.HeaderCarrier
 
 import cats.implicits.*
 import config.AppConfig
 import models.mqtt.{ TemperatureSensor, Trv }
+import models.LoggingWithRequest
 import queries.DevicesQueries
 
 @Singleton
@@ -15,13 +17,13 @@ class DevicesService @Inject() (
     appConfig: AppConfig,
     mqttPublisherService: MqttPublisherService
 )(implicit ec: ExecutionContext)
-    extends Logging {
+    extends LoggingWithRequest {
 
   @SuppressWarnings(Array("org.wartremover.warts.ThreadSleep"))
-  def getTrvs: Future[Seq[Trv]] = {
+  def getTrvs(implicit hc: HeaderCarrier): Future[Seq[Trv]] = {
     val devicesConfig = appConfig.trvDevices
     devicesQueries.getTrvs.flatMap { trvs =>
-      devicesConfig
+      devicesConfig.toSeq
         .filterNot(device => trvs.exists(_.name == device))
         .traverse { device =>
           logger.info(s"Requesting TRV state for device: $device")
@@ -36,10 +38,10 @@ class DevicesService @Inject() (
   }
 
   @SuppressWarnings(Array("org.wartremover.warts.ThreadSleep"))
-  def getTemperatureSensors: Future[Seq[TemperatureSensor]] = {
+  def getTemperatureSensors(implicit hc: HeaderCarrier): Future[Seq[TemperatureSensor]] = {
     val devicesConfig = appConfig.temperatureDevices
     devicesQueries.getTemperatureSensors.flatMap { sensors =>
-      devicesConfig
+      devicesConfig.toSeq
         .filterNot(device => sensors.exists(_.name == device))
         .traverse { device =>
           logger.info(s"Requesting sensor state for device: $device")
