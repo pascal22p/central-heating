@@ -7,6 +7,7 @@ import scala.concurrent.duration.DurationInt
 import uk.gov.hmrc.http.{ HeaderCarrier, RequestId, UpstreamErrorResponse }
 
 import org.apache.pekko.actor.Actor
+import org.slf4j.MDC
 
 import cats.data.EitherT
 import config.AppConfig
@@ -27,6 +28,8 @@ class NestMetricsToGraphiteJob(
 
   def receive: Receive = {
     case RunJob => {
+      val previousMdc = Option(MDC.getCopyOfContextMap)
+
       implicit val hc: HeaderCarrier = HeaderCarrier(requestId = Some(RequestId(UUID.randomUUID().toString)))
       logger.info("\u001b[35m Starting scheduled job nest metrics to graphite\u001b[0m")
       val span = tracer
@@ -76,8 +79,15 @@ class NestMetricsToGraphiteJob(
           span.setStatus(StatusCode.ERROR, e.getMessage)
           throw e
       } finally {
-        scope.close()
-        span.end()
+        try {
+          scope.close()
+          span.end()
+        } finally {
+          previousMdc match {
+            case Some(context) => MDC.setContextMap(context)
+            case None          => MDC.clear()
+          }
+        }
       }
     }
   }

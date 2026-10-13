@@ -34,7 +34,6 @@ class HeatingControlService @Inject() (
       Future.unit
     } else {
       logger.info("Heating control is enabled for Trvs")
-      given HeaderCarrier = HeaderCarrier()
 
       val action: EitherT[Future, UpstreamErrorResponse, Unit] =
         trv.runningState match {
