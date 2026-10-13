@@ -84,7 +84,9 @@ class HeatingControlService @Inject() (
         val action = if (sensor.temperature < targetTemperature) {
           nestConnector.getDevice().flatMap { device =>
             if (device.traits.thermostatMode == ThermostatMode.HEAT && device.traits.hvacStatus == HvacStatus.OFF) {
-              logger.info(s"Heat requested by ${sensor.name} and heating is off, turning heating on. Sensor temperature is ${sensor.temperature}deg and the target temperature is $targetTemperature")
+              logger.info(
+                s"Heat requested by ${sensor.name} and heating is off, turning heating on. Sensor temperature is ${sensor.temperature}deg and the target temperature is $targetTemperature"
+              )
               nestConnector.setTemperature(appConfig.heatingDemandActiveTemperatureCelsius)
             } else {
               if (device.traits.thermostatMode != ThermostatMode.HEAT) {

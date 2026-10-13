@@ -6,6 +6,8 @@ import java.util.concurrent.{ Executors, TimeUnit }
 import play.api.test.Helpers.{ await, defaultAwaitTimeout }
 import scala.concurrent.ExecutionContext
 
+import uk.gov.hmrc.http.HeaderCarrier
+
 import org.mockito.Mockito.when
 
 import models.nest.{ Connectivity, EcoMode, HvacStatus, NestDevice, NestTraits, ThermostatMode }
@@ -15,6 +17,8 @@ class GraphiteConnectorSpec extends BaseSpec {
 
   implicit lazy val ec: ExecutionContext =
     scala.concurrent.ExecutionContext.global
+
+  implicit val hc: HeaderCarrier = HeaderCarrier()
 
   "GraphiteConnector" should {
 
