@@ -44,11 +44,11 @@ class CacheQueries @Inject() (
           |VALUES (
           |    {key},
           |    {data},
-          |    CURRENT_TIMESTAMP + INTERVAL {ttl} MIN
+          |    CURRENT_TIMESTAMP + INTERVAL {ttl} MINUTE
           |)
           |ON DUPLICATE KEY UPDATE
           |    data = VALUES(data),
-          |    expires_at = CURRENT_TIMESTAMP + INTERVAL {ttl} MIN""".stripMargin
+          |    expires_at = CURRENT_TIMESTAMP + INTERVAL {ttl} MINUTE""".stripMargin
       )
         .on(
           "key"  -> key,

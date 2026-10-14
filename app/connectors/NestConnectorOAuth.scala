@@ -8,13 +8,13 @@ import play.api.libs.ws.WSBodyWritables.writeableOf_urlEncodedForm
 import play.api.Logging
 import scala.concurrent.{ ExecutionContext, Future }
 
-import uk.gov.hmrc.http.{ HeaderCarrier, HttpResponse, StringContextOps, UpstreamErrorResponse }
+import uk.gov.hmrc.http.{ HeaderCarrier, HttpReads, HttpResponse, StringContextOps, UpstreamErrorResponse }
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.HttpReads.Implicits.*
 
 import cats.data.EitherT
 import config.AppConfig
-import models.nest.NestToken
+import models.nest.{ NestToken, NestTokenResponse }
 import queries.NestAuthorisationQueries
 
 @Singleton
@@ -172,38 +172,33 @@ class NestConnectorOAuth @Inject() (
       http
         .post(url"${appConfig.googleTokenHost}/token")
         .withBody(formData)
-        .execute[Either[UpstreamErrorResponse, HttpResponse]]
-    )
-      .flatMap {
-
-        case response if response.status == 200 =>
-          val json        = response.json
-          val accessToken =
-            (json \ "access_token").as[String]
-          val expiresIn =
-            (json \ "expires_in").as[Long]
-          token = Some(
-            NestToken(
-              accessToken = accessToken,
-              expiresAt = System.currentTimeMillis() + expiresIn * 1000
-            )
-          )
-          EitherT.rightT(accessToken)
-
-        case _ =>
-          token = None
-          EitherT(
-            nestAuthorisationQueries.clearRefreshToken
-              .map { _ =>
-                Left(
-                  UpstreamErrorResponse(
-                    "Nest authorisation required",
-                    401,
-                    401
-                  )
+        .execute[Either[UpstreamErrorResponse, NestTokenResponse]]
+    ).biflatMap(
+      _ => {
+        token = None
+        EitherT(
+          nestAuthorisationQueries.clearRefreshToken
+            .map { _ =>
+              Left(
+                UpstreamErrorResponse(
+                  "Nest authorisation required",
+                  401,
+                  401
                 )
-              }
+              )
+            }
+        )
+      },
+      accessToken => {
+        token = Some(
+          NestToken(
+            accessToken = accessToken.access_token,
+            expiresAt = System.currentTimeMillis() + accessToken.expires_in * 1000
           )
+        )
+        EitherT.rightT(accessToken.access_token)
       }
+    )
+
   }
 }
