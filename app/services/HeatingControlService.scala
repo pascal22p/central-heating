@@ -37,8 +37,8 @@ class HeatingControlService @Inject() (
           logger.info(s"Trv `${trv.name}` is reporting HEAT")
           turnHeatingOn(s"Heat requested by ${trv.name}")
 
-        case RunningState.Idle =>
-          logger.info(s"Trv `${trv.name}` is reporting IDLE")
+        case RunningState.Idle | RunningState.Off =>
+          logger.info(s"Trv `${trv.name}` is reporting ${trv.runningState}")
           turnHeatingOff(s"Idle requested by ${trv.name}")
       }
     }
@@ -118,7 +118,7 @@ class HeatingControlService @Inject() (
       trvs    <- devicesService.getTrvs
     } yield {
       val sensorsWanting = targets.collect { case (s, target) if s.temperature <= target => s.name }
-      val trvsWanting    = trvs.filter(_.runningState != RunningState.Idle).map(_.name)
+      val trvsWanting    = trvs.filter(_.runningState == RunningState.Heat).map(_.name)
       sensorsWanting ++ trvsWanting
     }
 

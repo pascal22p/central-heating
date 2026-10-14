@@ -94,6 +94,7 @@ object Trv {
         runningState = runningStateValue match {
           case "idle" => RunningState.Idle
           case "heat" => RunningState.Heat
+          case "off"  => RunningState.Off
           case value  =>
             throw new IllegalArgumentException(
               s"Unknown running_state: $value"

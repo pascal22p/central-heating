@@ -77,12 +77,7 @@ final class DevicesQueries @Inject() (
         .as(
           SqlParser
             .str("data")
-            .map {
-              case data =>
-                Json
-                  .parse(data)
-                  .as[Trv](using Trv.sqlFormat)
-            }
+            .map(Json.parse(_).as[Trv](using Trv.sqlFormat))
             .singleOpt
         )
     }
@@ -128,12 +123,7 @@ final class DevicesQueries @Inject() (
         .as(
           SqlParser
             .str("data")
-            .map {
-              case data =>
-                Json
-                  .parse(data)
-                  .as[TemperatureSensor](using TemperatureSensor.sqlFormat)
-            }
+            .map(Json.parse(_).as[TemperatureSensor](using TemperatureSensor.sqlFormat))
             .*
         )
     }
@@ -150,12 +140,7 @@ final class DevicesQueries @Inject() (
         .as(
           SqlParser
             .str("data")
-            .map {
-              case data =>
-                Json
-                  .parse(data)
-                  .as[TemperatureSensor](using TemperatureSensor.sqlFormat)
-            }
+            .map(Json.parse(_).as[TemperatureSensor](using TemperatureSensor.sqlFormat))
             .singleOpt
         )
     }
