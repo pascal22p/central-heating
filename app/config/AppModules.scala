@@ -33,7 +33,7 @@ class AppModules extends Module with Logging {
         .toInstance(Clock.system(ZoneId.of("Europe/London"))),
       bind[NestConnector].qualifiedWith("default").to[DefaultNestConnector],
       bind[NestConnector]
-        .to[CachingNestConnector], // do not disable caching. The address change relies on the cache
+        .to[CachingNestConnector],
 
     ) ++ nestScheduler ++ mqttSubscriber
   }
