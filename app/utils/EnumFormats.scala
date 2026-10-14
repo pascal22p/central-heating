@@ -9,7 +9,7 @@ object EnumFormats {
       Reads {
         case JsString(s) =>
           values
-            .find(_.toString == s)
+            .find(_.toString.toLowerCase == s.toLowerCase)
             .fold[JsResult[E]](JsError(s"Unknown value: $s"))(JsSuccess(_))
         case _ => JsError("error.expected.jsstring")
       },
