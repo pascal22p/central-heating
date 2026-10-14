@@ -14,7 +14,7 @@ CREATE TABLE `admins` (
                                `is_admin` tinyint(1) NOT NULL,
                                PRIMARY KEY (`id`),
                                UNIQUE KEY `email` (`email`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DROP TABLE IF EXISTS `nest_authorisation`;
 CREATE TABLE `nest_authorisation` (
@@ -25,7 +25,7 @@ CREATE TABLE `nest_authorisation` (
                                       PRIMARY KEY (`id`),
                                       CONSTRAINT `nest_authorisation_singleton`
                                           CHECK (`id` = 1)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DROP TABLE IF EXISTS `devices`;
 CREATE TABLE `devices` (
@@ -44,4 +44,13 @@ CREATE TABLE sensor_schedules (
                                   periods JSON NOT NULL,
                                   PRIMARY KEY (id),
                                   UNIQUE KEY uq_sensor_schedules_topic (topic)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+DROP TABLE IF EXISTS `cache`;
+CREATE TABLE `cache` (
+                         `key` varchar(255) NOT NULL,
+                         `data` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`data`)),
+                         `expires_at` timestamp NOT NULL,
+                         PRIMARY KEY (`key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

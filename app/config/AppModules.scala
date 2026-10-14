@@ -6,6 +6,7 @@ import play.api.inject.{ Binding, Module }
 
 import uk.gov.hmrc.http.client.HttpClientV2
 
+import connectors.{ CachingNestConnector, DefaultNestConnector, NestConnector }
 import jobs.JobNestScheduler
 import services.MqttSubscriberService
 
@@ -29,7 +30,11 @@ class AppModules extends Module with Logging {
     Seq(
       bind[HttpClientV2].toProvider[HttpClientV2Provider],
       bind[Clock]
-        .toInstance(Clock.system(ZoneId.of("Europe/London")))
+        .toInstance(Clock.system(ZoneId.of("Europe/London"))),
+      bind[NestConnector].qualifiedWith("default").to[DefaultNestConnector],
+      bind[NestConnector]
+        .to[CachingNestConnector],
+
     ) ++ nestScheduler ++ mqttSubscriber
   }
 }

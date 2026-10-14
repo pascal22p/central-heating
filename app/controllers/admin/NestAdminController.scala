@@ -9,13 +9,14 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.http.HeaderCarrierConverter
 
 import actions.AuthJourney
-import connectors.NestConnector
+import connectors.{ NestConnector, NestConnectorOAuth }
 import views.html.NestView
 
 @Singleton
 class NestAdminController @Inject() (
     val controllerComponents: ControllerComponents,
     nestConnector: NestConnector,
+    nestConnectorOAuth: NestConnectorOAuth,
     authAction: AuthJourney,
     nestView: NestView
 )(implicit ec: ExecutionContext)
@@ -51,7 +52,7 @@ class NestAdminController @Inject() (
 
   def authorize(): Action[AnyContent] = authAction.authWithAdminRight {
     Redirect(
-      nestConnector.authorizationUrl()
+      nestConnectorOAuth.authorizationUrl()
     )
   }
 
@@ -63,7 +64,7 @@ class NestAdminController @Inject() (
       implicit val hc =
         uk.gov.hmrc.http.HeaderCarrier()
 
-      nestConnector
+      nestConnectorOAuth
         .handleCallback(code, state)
         .value
         .map {

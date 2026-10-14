@@ -1,6 +1,6 @@
 package models.nest
 
-import play.api.libs.json.Reads
+import play.api.libs.json.{ Format, Json, OFormat, Reads }
 
 import models.*
 import utils.EnumFormats
@@ -12,6 +12,15 @@ final case class NestDevice(
 )
 
 object NestDevice {
+
+  val cacheFormat: Format[NestDevice] = {
+    given Format[Connectivity]   = EnumFormats.enumFormat(Connectivity.values)
+    given Format[ThermostatMode] = EnumFormats.enumFormat(ThermostatMode.values)
+    given Format[HvacStatus]     = EnumFormats.enumFormat(HvacStatus.values)
+    given Format[EcoMode]        = EnumFormats.enumFormat(EcoMode.values)
+    given Format[NestTraits]     = Json.format[NestTraits]
+    Json.format[NestDevice]
+  }
 
   implicit val nestDeviceReads: Reads[NestDevice] = Reads { json =>
     val traits = json \ "traits"

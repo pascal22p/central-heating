@@ -54,6 +54,7 @@ class MqttMessageHandlerServiceSpec extends BaseSpec {
       "running_state"                 -> (trv.runningState match {
         case RunningState.Idle => "idle"
         case RunningState.Heat => "heat"
+        case RunningState.Off  => "off"
       }),
       "system_mode" -> (trv.systemMode match {
         case SystemMode.Heat => "heat"

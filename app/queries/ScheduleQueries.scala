@@ -48,12 +48,7 @@ final class ScheduleQueries @Inject() (
         .as(
           SqlParser
             .str("periods")
-            .map {
-              case data =>
-                Json
-                  .parse(data)
-                  .as[Seq[SchedulePeriod]]
-            }
+            .map(Json.parse(_).as[Seq[SchedulePeriod]])
             .singleOpt
         )
         .getOrElse(Seq.empty)
