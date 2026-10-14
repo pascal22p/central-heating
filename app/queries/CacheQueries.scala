@@ -51,7 +51,7 @@ class CacheQueries @Inject() (
           |    expires_at = CURRENT_TIMESTAMP + INTERVAL {ttl} MIN""".stripMargin
       )
         .on(
-          "key" -> key,
+          "key"  -> key,
           "data" -> Json.stringify(Json.toJson(data)),
           "ttl"  -> cacheTtl
         )

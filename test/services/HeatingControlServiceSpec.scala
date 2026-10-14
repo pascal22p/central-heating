@@ -285,9 +285,7 @@ class HeatingControlServiceSpec extends BaseSpec with MockitoSugar {
       verifyThermostatNotChanged()
     }
 
-    "not turn the heating off when the sensor is exactly at its target" in new Fixture {
-      // `<` decides heat vs idle, but the demand check uses `<=`, so a sensor exactly at target still counts as
-      // requesting heat and blocks the turn-off. This pins the current behaviour.
+    "Turn the heating off when the sensor is exactly at its target" in new Fixture {
       givenSchedule("sensor1", currentPeriod)
       givenNestDevice(traits = fakeNestTraits(thermostatMode = ThermostatMode.HEAT, hvacStatus = HvacStatus.HEATING))
       givenSensors(fakeTemperatureSensor("sensor1", scheduleTarget))
@@ -295,7 +293,7 @@ class HeatingControlServiceSpec extends BaseSpec with MockitoSugar {
 
       sut.onTemperatureSensorUpdate(fakeTemperatureSensor("sensor1", scheduleTarget)).futureValue mustBe (())
 
-      verifyThermostatNotChanged()
+      verifyHeatingTurnedOff()
     }
 
     "complete successfully when the schedule lookup fails" in new Fixture {
