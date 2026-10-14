@@ -37,9 +37,9 @@ class CacheQueries @Inject() (
     db.withConnection { implicit conn =>
       SQL(
         """INSERT INTO cache (
-          |    key,
-          |    data,
-          |    expires_at
+          |    `key`,
+          |    `data`,
+          |    `expires_at`
           |)
           |VALUES (
           |    {key},
@@ -51,7 +51,7 @@ class CacheQueries @Inject() (
           |    expires_at = CURRENT_TIMESTAMP + INTERVAL {ttl} MIN""".stripMargin
       )
         .on(
-          "name" -> key,
+          "key" -> key,
           "data" -> Json.stringify(Json.toJson(data)),
           "ttl"  -> cacheTtl
         )
