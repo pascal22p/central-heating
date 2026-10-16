@@ -14,10 +14,10 @@ import org.scalatestplus.mockito.MockitoSugar
 import cats.data.EitherT
 import config.AppConfig
 import connectors.NestConnector
-import models.{ ScheduleDay, SchedulePeriod }
+import models.{ HeatingOverride, ScheduleDay, SchedulePeriod }
 import models.mqtt.{ RunningState, TemperatureSensor, Trv }
 import models.nest.{ HvacStatus, NestDevice, NestTraits, ThermostatMode }
-import queries.ScheduleQueries
+import queries.{ HeatingOverrideQueries, ScheduleQueries }
 import testUtils.BaseSpec
 
 class HeatingControlServiceSpec extends BaseSpec with MockitoSugar {
@@ -38,10 +38,11 @@ class HeatingControlServiceSpec extends BaseSpec with MockitoSugar {
     ScheduleDay(periods = periods)
 
   private class Fixture(heatingEnabled: Boolean = true, trvEnabled: Boolean = true, sensorEnabled: Boolean = true) {
-    val appConfig: AppConfig             = mock[AppConfig]
-    val nestConnector: NestConnector     = mock[NestConnector]
-    val devicesService: DevicesService   = mock[DevicesService]
-    val scheduleQueries: ScheduleQueries = mock[ScheduleQueries]
+    val appConfig: AppConfig                    = mock[AppConfig]
+    val nestConnector: NestConnector            = mock[NestConnector]
+    val devicesService: DevicesService          = mock[DevicesService]
+    val scheduleQueries: ScheduleQueries        = mock[ScheduleQueries]
+    val overrideQueries: HeatingOverrideQueries = mock[HeatingOverrideQueries]
 
     val clock: Clock = Clock.fixed(Instant.parse("2026-01-01T12:00:00Z"), ZoneOffset.UTC)
 
@@ -54,12 +55,15 @@ class HeatingControlServiceSpec extends BaseSpec with MockitoSugar {
     when(nestConnector.setTemperature(anyDouble())(using any()))
       .thenReturn(EitherT.rightT[Future, UpstreamErrorResponse](()))
 
+    when(overrideQueries.getOverride).thenReturn(Future.successful(None))
+
     when(devicesService.getTrvs).thenReturn(Future.successful(Seq.empty[Trv]))
     when(devicesService.getTemperatureSensors(using any())).thenReturn(Future.successful(Seq.empty[TemperatureSensor]))
 
-    val sut = new HeatingControlService(appConfig, nestConnector, devicesService, scheduleQueries, clock)(
-      using scala.concurrent.ExecutionContext.global
-    )
+    val sut =
+      new HeatingControlService(appConfig, nestConnector, devicesService, scheduleQueries, overrideQueries, clock)(
+        using scala.concurrent.ExecutionContext.global
+      )
 
     def givenNestDevice(
         name: String = "Name",
@@ -68,6 +72,9 @@ class HeatingControlServiceSpec extends BaseSpec with MockitoSugar {
     ): OngoingStubbing[EitherT[Future, UpstreamErrorResponse, NestDevice]] =
       when(nestConnector.getDevice()(using any()))
         .thenReturn(EitherT.rightT[Future, UpstreamErrorResponse](NestDevice(name, deviceType, traits)))
+
+    def givenOverride(mode: HeatingOverride): OngoingStubbing[Future[Option[HeatingOverride]]] =
+      when(overrideQueries.getOverride).thenReturn(Future.successful(Some(mode)))
 
     def givenTrvs(trvs: Trv*): OngoingStubbing[Future[Seq[Trv]]] =
       when(devicesService.getTrvs).thenReturn(Future.successful(trvs))
@@ -303,6 +310,95 @@ class HeatingControlServiceSpec extends BaseSpec with MockitoSugar {
       sut.onTemperatureSensorUpdate(fakeTemperatureSensor("sensor1", 19.0)).futureValue mustBe (())
 
       verifyNoInteractions(nestConnector)
+    }
+  }
+
+  "HeatingControlService with a manual override" should {
+
+    "turn the heating on for an idle TRV update when the override is heat" in new Fixture {
+      givenOverride(HeatingOverride.Heat)
+      givenNestDevice(traits = fakeNestTraits(thermostatMode = ThermostatMode.HEAT, hvacStatus = HvacStatus.OFF))
+
+      sut.onTrvUpdate(fakeTrv("trv1", runningState = RunningState.Idle)).futureValue mustBe (())
+
+      verifyHeatingTurnedOn()
+    }
+
+    "turn the heating on for a sensor above its target when the override is heat" in new Fixture {
+      givenOverride(HeatingOverride.Heat)
+      givenNestDevice(traits = fakeNestTraits(thermostatMode = ThermostatMode.HEAT, hvacStatus = HvacStatus.OFF))
+
+      sut.onTemperatureSensorUpdate(fakeTemperatureSensor("sensor1", 25.0)).futureValue mustBe (())
+
+      verifyHeatingTurnedOn()
+      verifyNoInteractions(scheduleQueries)
+    }
+
+    "turn the heating off for a heat TRV update when the override is idle" in new Fixture {
+      givenOverride(HeatingOverride.Idle)
+      givenNestDevice(traits = fakeNestTraits(thermostatMode = ThermostatMode.HEAT, hvacStatus = HvacStatus.HEATING))
+
+      sut.onTrvUpdate(fakeTrv("trv1", runningState = RunningState.Heat)).futureValue mustBe (())
+
+      verifyHeatingTurnedOff()
+      verifyNoInteractions(devicesService)
+    }
+
+    "not turn the heating on when the override is heat but the thermostat is not in HEAT mode" in new Fixture {
+      givenOverride(HeatingOverride.Heat)
+      givenNestDevice(traits = fakeNestTraits(thermostatMode = ThermostatMode.OFF, hvacStatus = HvacStatus.OFF))
+
+      sut.onTrvUpdate(fakeTrv("trv1", runningState = RunningState.Heat)).futureValue mustBe (())
+
+      verifyThermostatNotChanged()
+    }
+
+    "not read the override when heating control is disabled" in new Fixture(heatingEnabled = false) {
+      sut.onTrvUpdate(fakeTrv("trv1", runningState = RunningState.Heat)).futureValue mustBe (())
+
+      verifyNoInteractions(overrideQueries)
+      verifyNoInteractions(nestConnector)
+    }
+
+    "applyOverride heat turns the heating on immediately" in new Fixture {
+      givenNestDevice(traits = fakeNestTraits(thermostatMode = ThermostatMode.HEAT, hvacStatus = HvacStatus.OFF))
+
+      sut.applyOverride(HeatingOverride.Heat).futureValue mustBe (())
+
+      verifyHeatingTurnedOn()
+    }
+
+    "applyOverride idle turns the heating off even when a TRV is requesting heat" in new Fixture {
+      givenNestDevice(traits = fakeNestTraits(thermostatMode = ThermostatMode.HEAT, hvacStatus = HvacStatus.HEATING))
+      givenTrvs(fakeTrv("trv1", runningState = RunningState.Heat))
+
+      sut.applyOverride(HeatingOverride.Idle).futureValue mustBe (())
+
+      verifyHeatingTurnedOff()
+    }
+
+    "applyOverride does nothing when heating control is disabled" in new Fixture(heatingEnabled = false) {
+      sut.applyOverride(HeatingOverride.Heat).futureValue mustBe (())
+
+      verifyNoInteractions(nestConnector)
+    }
+
+    "applyAutomatic turns the heating on when a TRV is requesting heat" in new Fixture {
+      givenNestDevice(traits = fakeNestTraits(thermostatMode = ThermostatMode.HEAT, hvacStatus = HvacStatus.OFF))
+      givenTrvs(fakeTrv("trv1", runningState = RunningState.Heat))
+
+      sut.applyAutomatic().futureValue mustBe (())
+
+      verifyHeatingTurnedOn()
+    }
+
+    "applyAutomatic turns the heating off when no device is requesting heat" in new Fixture {
+      givenNestDevice(traits = fakeNestTraits(thermostatMode = ThermostatMode.HEAT, hvacStatus = HvacStatus.HEATING))
+      givenTrvs(fakeTrv("trv1", runningState = RunningState.Idle))
+
+      sut.applyAutomatic().futureValue mustBe (())
+
+      verifyHeatingTurnedOff()
     }
   }
 

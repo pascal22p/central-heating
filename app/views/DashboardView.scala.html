@@ -1,3 +1,4 @@
+@import models.{HeatingOverride, HeatingOverrideState}
 @import models.mqtt.{RunningState, TemperatureSensor, Trv}
 @import models.nest.{NestDevice, HvacStatus, ThermostatMode}
 
@@ -5,7 +6,7 @@
   main: Main
 )
 
-@(nest: NestDevice, sensors: Seq[(TemperatureSensor, Double)], trvs: Seq[Trv])(
+@(nest: NestDevice, sensors: Seq[(TemperatureSensor, Double)], trvs: Seq[Trv], manualOverride: Option[HeatingOverrideState])(
   implicit authenticatedRequest: AuthenticatedRequest[?],
   messages: Messages
 )
@@ -68,6 +69,14 @@
                         @nest.traits.hvacStatus
                       </strong>
                     }
+                    </p>
+                    <p class="govuk-body">Control:
+                    @manualOverride match {
+                      case Some(HeatingOverrideState(HeatingOverride.Heat, expiresAt)) => { <strong class="govuk-tag govuk-tag--red">Override: heat</strong> @expiresAt.map(at => s"until ${HeatingOverrideState.formatExpiry(at)}") }
+                      case Some(HeatingOverrideState(HeatingOverride.Idle, expiresAt)) => { <strong class="govuk-tag govuk-tag--blue">Override: idle</strong> @expiresAt.map(at => s"until ${HeatingOverrideState.formatExpiry(at)}") }
+                      case None => { <strong class="govuk-tag govuk-tag--green">Automatic</strong> }
+                    }
+                    <a class="govuk-link govuk-!-margin-left-2" href="@controllers.admin.routes.HeatingOverrideController.show.url">Change</a>
                     </p>
                   </div>
                 </div>

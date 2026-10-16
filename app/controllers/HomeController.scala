@@ -13,7 +13,7 @@ import actions.AuthAction
 import config.AppConfig
 import connectors.NestConnector
 import models.mqtt.TemperatureSensor
-import queries.ScheduleQueries
+import queries.{ HeatingOverrideQueries, ScheduleQueries }
 import services.DevicesService
 import views.html.DashboardView
 
@@ -25,6 +25,7 @@ class HomeController @Inject() (
     nestConnector: NestConnector,
     devicesService: DevicesService,
     scheduleQueries: ScheduleQueries,
+    heatingOverrideQueries: HeatingOverrideQueries,
     dashboardView: DashboardView,
     clock: Clock
 )(implicit ec: ExecutionContext)
@@ -40,10 +41,11 @@ class HomeController @Inject() (
       sensors        <- devicesService.getTemperatureSensors
       trvs           <- devicesService.getTrvs
       sensorStatuses <- Future.sequence(sensors.map(sensorStatus))
+      manualOverride <- heatingOverrideQueries.getOverrideState
     } yield {
       nestResult match {
         case Right(device) =>
-          Ok(dashboardView(device, sensorStatuses, trvs))
+          Ok(dashboardView(device, sensorStatuses, trvs, manualOverride))
 
         case Left(error) =>
           InternalServerError(s"Unable to read Nest: ${error.message}")

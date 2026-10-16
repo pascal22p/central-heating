@@ -82,7 +82,6 @@ class GraphiteConnectorSpec extends BaseSpec {
         val lines =
           payload.trim.linesIterator.toSeq
 
-        println(lines)
         lines.size mustBe 10
 
         lines.exists(_.startsWith("heating.nest.temperature_celsius 19.5 ")) mustBe true

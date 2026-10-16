@@ -9,3 +9,6 @@ GET     /graphite/nest    controllers.admin.GraphiteController.pushNest
 
 GET   /schedule/*topic   controllers.admin.ScheduleController.edit(topic: String)
 POST  /schedule/*topic   controllers.admin.ScheduleController.save(topic: String)
+
+GET   /override   controllers.admin.HeatingOverrideController.show
+POST  /override   controllers.admin.HeatingOverrideController.save

@@ -54,3 +54,16 @@ CREATE TABLE `cache` (
                          `expires_at` timestamp NOT NULL,
                          PRIMARY KEY (`key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+DROP TABLE IF EXISTS `heating_override`;
+CREATE TABLE `heating_override` (
+                                    `id` tinyint unsigned NOT NULL,
+                                    `mode` enum('heat','idle') NOT NULL,
+                                    `expires_at` timestamp NULL DEFAULT NULL,
+                                    `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                    `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                                    PRIMARY KEY (`id`),
+                                    CONSTRAINT `heating_override_singleton`
+                                        CHECK (`id` = 1)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
