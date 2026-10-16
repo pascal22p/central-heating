@@ -117,7 +117,7 @@ class HeatingControlService @Inject() (
       targets <- sensors.traverse(s => targetTemperature(s.name).map(s -> _))
       trvs    <- devicesService.getTrvs
     } yield {
-      val sensorsWanting = targets.collect { case (s, target) if s.temperature < target => s.name }
+      val sensorsWanting = targets.collect { case (s, target) if (s.temperature < target - appConfig.heatingControlOffset) => s.name }
       val trvsWanting    = trvs.filter(_.runningState == RunningState.Heat).map(_.name)
       sensorsWanting ++ trvsWanting
     }
