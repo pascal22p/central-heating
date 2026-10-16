@@ -10,9 +10,7 @@
 
 @(device: NestDevice)(implicit authenticatedRequest: AuthenticatedRequest[?], messages: Messages)
 
-@main() {
-
-  <h1 class="govuk-heading-xl">Nest thermostat</h1>
+@main(title = "Nest thermostat") {
 
   <p class="govuk-body">
     Current state and sensor readings from your Nest thermostat.

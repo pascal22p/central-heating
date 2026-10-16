@@ -21,6 +21,9 @@ class AppConfig @Inject() (configuration: Configuration) {
   val appName: String    = configuration.get[String]("appName")
   val commitHash: String = sys.props.getOrElse("git.commit.hash", "unknown")
 
+  lazy val cacheQueriesTtl: Int =
+    configuration.get[Int]("db-options.cache-queries.ttlInMinutes")
+
   lazy val nestClientId: String =
     configuration.get[String]("microservice.services.nest.client-id")
 
@@ -128,6 +131,9 @@ class AppConfig @Inject() (configuration: Configuration) {
 
   lazy val heatingControlIsEnabled: Boolean =
     configuration.get[Boolean]("heating-demand.isEnabled")
+
+  lazy val heatingControlOffset: Double =
+    configuration.get[Double]("heating-demand.offset")
 
   lazy val sensorSchedules: Map[String, ScheduleDay] = {
     val config = configuration.underlying.getConfig("sensor-schedules")

@@ -13,7 +13,7 @@
 
 @(userForm: Form[UserDataForm])(implicit request: AuthenticatedRequest[?], messages: Messages)
 
-@main(None) {
+@main(title = "Central heating login") {
 
   @block(messages("login.into.account")) {
 

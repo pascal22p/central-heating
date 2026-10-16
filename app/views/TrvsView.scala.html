@@ -6,14 +6,12 @@
 
 @(trvs: Seq[Trv])(implicit authenticatedRequest: AuthenticatedRequest[?], messages: Messages)
 
-@main() {
+@main(title = "TRVs") {
   <div class="govuk-width-container">
     <main class="govuk-main-wrapper" id="main-content">
 
       <div class="govuk-grid-row">
         <div class="govuk-grid-column-two-thirds">
-
-          <h1 class="govuk-heading-xl">TRVs</h1>
 
         @if(trvs.isEmpty) {
           <div class="govuk-inset-text">

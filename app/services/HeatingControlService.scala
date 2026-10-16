@@ -46,7 +46,7 @@ class HeatingControlService @Inject() (
   def onTemperatureSensorUpdate(sensor: TemperatureSensor)(implicit hc: HeaderCarrier): Future[Unit] =
     handle("Sensor", sensor.name, appConfig.sensorControlIsEnabled) {
       EitherT.liftF[Future, UpstreamErrorResponse, Double](targetTemperature(sensor.name)).flatMap { target =>
-        if (sensor.temperature < target) {
+        if (sensor.temperature < target - appConfig.heatingControlOffset) {
           turnHeatingOn(s"Heat requested by ${sensor.name} (sensor ${sensor.temperature}deg, target ${target}deg)")
         } else {
           turnHeatingOff(s"Idle requested by ${sensor.name}")
