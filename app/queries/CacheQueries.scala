@@ -6,15 +6,17 @@ import play.api.libs.json.{ Json, Reads, Writes }
 import scala.concurrent.Future
 
 import anorm.{ SQL, SqlParser }
+import config.AppConfig
 import models.DatabaseExecutionContext
 
 @Singleton
 class CacheQueries @Inject() (
+    appConfig: AppConfig,
     db: Database,
     databaseExecutionContext: DatabaseExecutionContext
 ) {
 
-  private val cacheTtl: Int = 10
+  private val cacheTtl: Int = appConfig.cacheQueriesTtl
 
   def getFromCache[A](key: String)(implicit reads: Reads[A]): Future[Option[A]] = Future {
     db.withConnection { implicit conn =>

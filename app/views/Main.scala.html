@@ -13,6 +13,7 @@
 
 
 @(
+        title: String,
         caption: Option[String] = None,
         extraHeaders: Seq[Html] = Seq.empty
 )(contentBlock: Html)(implicit authenticatedRequest: AuthenticatedRequest[?], messages: Messages)
@@ -101,14 +102,40 @@
                     serviceName = None,
                     serviceUrl = Some("/"),
                     navigation =
-                        Seq(ServiceNavigationItem(
+                        Seq(
+                          ServiceNavigationItem(
+                            content = Text("Dashboard"),
+                            href = controllers.routes.HomeController.index().url,
+                            active = false,
+                            current = false,
+                            classes = "",
+                            attributes = Map.empty
+                          ),
+                          ServiceNavigationItem(
+                            content = Text("Sensors"),
+                            href = controllers.routes.TemperatureSensorController.index().url,
+                            active = false,
+                            current = false,
+                            classes = "",
+                            attributes = Map.empty
+                          ),
+                          ServiceNavigationItem(
+                            content = Text("TRVs"),
+                            href = controllers.routes.TrvController.index().url,
+                            active = false,
+                            current = false,
+                            classes = "",
+                            attributes = Map.empty
+                          ),
+                          ServiceNavigationItem(
                             content = Text("Admin"),
                             href = controllers.admin.routes.AdminController.index.url,
                             active = false,
                             current = false,
                             classes = "",
                             attributes = Map.empty
-                        )),
+                          )
+                        ),
                     navigationClasses = "",
                     navigationId = "navigation",
                     navigationLabel = Some("navigationLabel"),
@@ -131,7 +158,7 @@
                         @for(c <-caption) {
                             <span class="govuk-caption-l">@c</span>
                         }
-                        @messages("h1.title")
+                        @messages(title)
                     </h1>
                 </div>
 
