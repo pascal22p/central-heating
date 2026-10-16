@@ -1,0 +1,68 @@
+@import models.{HeatingOverride, HeatingOverrideState}
+
+@this(
+  main: Main
+)
+
+@(current: Option[HeatingOverrideState], error: Option[String] = None)(
+  implicit request: AuthenticatedRequest[?],
+  messages: Messages
+)
+
+@expiry(expiresAt: Option[java.time.Instant]) = {
+  @expiresAt match {
+    case Some(at) => { until @HeatingOverrideState.formatExpiry(at) }
+    case None => { until switched back to automatic }
+  }
+}
+
+@main(title = "Heating override") {
+  @for(msg <- error) {
+    <div class="govuk-error-summary" data-module="govuk-error-summary">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <div class="govuk-error-summary__body">@msg</div>
+      </div>
+    </div>
+  }
+
+  <p class="govuk-body">
+    Current mode:
+    @current match {
+      case Some(HeatingOverrideState(HeatingOverride.Heat, expiresAt)) => { <strong class="govuk-tag govuk-tag--red">Override: heat</strong> @expiry(expiresAt) }
+      case Some(HeatingOverrideState(HeatingOverride.Idle, expiresAt)) => { <strong class="govuk-tag govuk-tag--blue">Override: idle</strong> @expiry(expiresAt) }
+      case None => { <strong class="govuk-tag govuk-tag--green">Automatic</strong> }
+    }
+  </p>
+
+  <p class="govuk-body">
+    While an override is set, TRVs, sensors and schedules are ignored and the thermostat is held in the chosen state
+    until the override expires or you switch back to automatic.
+  </p>
+
+  @helper.form(action = controllers.admin.routes.HeatingOverrideController.save) {
+    @helper.CSRF.formField
+
+    <div class="govuk-form-group">
+      <label class="govuk-label" for="duration">Keep the override for</label>
+      <select class="govuk-select" id="duration" name="duration">
+        @for((minutes, label) <- HeatingOverride.durationOptions) {
+          <option value="@minutes" @if(minutes == HeatingOverride.defaultDurationMinutes) {selected}>@label</option>
+        }
+        <option value="">Until I switch back to automatic</option>
+      </select>
+    </div>
+
+    <div class="govuk-button-group">
+      <button type="submit" name="mode" value="heat" class="govuk-button" data-module="govuk-button">
+        Force heat
+      </button>
+      <button type="submit" name="mode" value="idle" class="govuk-button" data-module="govuk-button">
+        Force idle
+      </button>
+      <button type="submit" name="mode" value="auto" class="govuk-button govuk-button--secondary" data-module="govuk-button">
+        Back to automatic
+      </button>
+    </div>
+  }
+}

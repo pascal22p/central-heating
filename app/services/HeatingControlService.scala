@@ -11,10 +11,10 @@ import cats.data.EitherT
 import cats.implicits.toTraverseOps
 import config.AppConfig
 import connectors.NestConnector
+import models.{ HeatingOverride, LoggingWithRequest }
 import models.mqtt.{ RunningState, TemperatureSensor, Trv }
 import models.nest.{ HvacStatus, ThermostatMode }
-import models.LoggingWithRequest
-import queries.ScheduleQueries
+import queries.{ HeatingOverrideQueries, ScheduleQueries }
 
 @Singleton
 class HeatingControlService @Inject() (
@@ -22,6 +22,7 @@ class HeatingControlService @Inject() (
     nestConnector: NestConnector,
     devicesService: DevicesService,
     scheduleQueries: ScheduleQueries,
+    heatingOverrideQueries: HeatingOverrideQueries,
     clock: Clock
 )(implicit ec: ExecutionContext)
     extends LoggingWithRequest {
@@ -54,10 +55,41 @@ class HeatingControlService @Inject() (
       }
     }
 
+  /** Immediately forces the thermostat into the requested state, ignoring the TRVs and sensors. */
+  def applyOverride(mode: HeatingOverride)(implicit hc: HeaderCarrier): Future[Unit] =
+    execute("override", mode.dbValue, appConfig.heatingControlIsEnabled)(enforceOverride(mode))
+
+  /** Used when an override is cleared: puts the thermostat back in the state the devices are asking for. */
+  def applyAutomatic()(implicit hc: HeaderCarrier): Future[Unit] =
+    execute("automatic", "override cleared", appConfig.heatingControlIsEnabled) {
+      EitherT.liftF[Future, UpstreamErrorResponse, Seq[String]](devicesRequestingHeat).flatMap { requesting =>
+        if (requesting.isEmpty) {
+          turnHeatingOff("Override cleared and no device requests heat")
+        } else {
+          turnHeatingOn(s"Override cleared and heat requested by ${requesting.mkString(", ")}")
+        }
+      }
+    }
+
   private def handle(kind: String, name: String, specificEnabled: Boolean)(
       action: => Result
   )(implicit hc: HeaderCarrier): Future[Unit] =
-    if (appConfig.heatingControlIsEnabled && specificEnabled) {
+    execute(kind, name, appConfig.heatingControlIsEnabled && specificEnabled) {
+      EitherT
+        .liftF[Future, UpstreamErrorResponse, Option[HeatingOverride]](heatingOverrideQueries.getOverride)
+        .flatMap {
+          case Some(mode) =>
+            logger.info(s"Manual override ${mode.dbValue} is active, ignoring the request from $name")
+            enforceOverride(mode)
+          case None =>
+            action
+        }
+    }
+
+  private def execute(kind: String, name: String, enabled: Boolean)(
+      action: => Result
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    if (enabled) {
       logger.info(s"Heating control is enabled for $kind")
       action.value
         .map {
@@ -69,10 +101,14 @@ class HeatingControlService @Inject() (
             logger.error(s"Unexpected error updating heating for $name", e)
         }
     } else {
-      logger.warn(
-        s"Heating control disabled. Heating control: ${appConfig.heatingControlIsEnabled}, $kind control: $specificEnabled"
-      )
+      logger.warn(s"Heating control disabled for $kind $name")
       Future.unit
+    }
+
+  private def enforceOverride(mode: HeatingOverride)(implicit hc: HeaderCarrier): Result =
+    mode match {
+      case HeatingOverride.Heat => turnHeatingOn("Manual override: heat")
+      case HeatingOverride.Idle => turnHeatingOff("Manual override: idle", ignoreRequests = true)
     }
 
   private def turnHeatingOn(reason: String)(implicit hc: HeaderCarrier): Result =
@@ -89,8 +125,8 @@ class HeatingControlService @Inject() (
       }
     }
 
-  // Guard 1: Nest state. Guard 2: no device anywhere wants heat.
-  private def turnHeatingOff(reason: String)(implicit hc: HeaderCarrier): Result =
+  // Guard 1: Nest state. Guard 2: no device anywhere wants heat (skipped for a manual idle override).
+  private def turnHeatingOff(reason: String, ignoreRequests: Boolean = false)(implicit hc: HeaderCarrier): Result =
     nestConnector.getDevice().flatMap { device =>
       if (device.traits.thermostatMode != ThermostatMode.HEAT) {
         logger.info("The thermostat is OFF on summer mode. Nothing to turn off.")
@@ -98,6 +134,9 @@ class HeatingControlService @Inject() (
       } else if (device.traits.hvacStatus != HvacStatus.HEATING) {
         logger.debug("The heating is already off")
         noAction
+      } else if (ignoreRequests) {
+        logger.info(s"$reason and heating is on, turning heating off")
+        nestConnector.setTemperature(appConfig.heatingDemandStandbyTemperatureCelsius)
       } else {
         EitherT.liftF[Future, UpstreamErrorResponse, Seq[String]](devicesRequestingHeat).flatMap { requesting =>
           if (requesting.isEmpty) {
@@ -117,8 +156,10 @@ class HeatingControlService @Inject() (
       targets <- sensors.traverse(s => targetTemperature(s.name).map(s -> _))
       trvs    <- devicesService.getTrvs
     } yield {
-      val sensorsWanting = targets.collect { case (s, target) if (s.temperature < target - appConfig.heatingControlOffset) => s.name }
-      val trvsWanting    = trvs.filter(_.runningState == RunningState.Heat).map(_.name)
+      val sensorsWanting = targets.collect {
+        case (s, target) if s.temperature < target - appConfig.heatingControlOffset => s.name
+      }
+      val trvsWanting = trvs.filter(_.runningState == RunningState.Heat).map(_.name)
       sensorsWanting ++ trvsWanting
     }
 

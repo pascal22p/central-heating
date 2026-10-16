@@ -20,6 +20,7 @@ Central heating and climate management service built with Scala and the Play Fra
 - **Nest Thermostat Integration**: Communicates with the Google Smart Device Management (SDM) API to monitor ambient temperature, humidity, operational modes, and setpoints, as well as adjust temperature settings.
 - **Zigbee TRV Monitoring**: Ingests real-time MQTT telemetry from Zigbee2MQTT for radiator valves (TRVs).
 - **Time-Series Metrics**: Pushes thermostat and heating telemetry directly to Graphite (Carbon) for Grafana dashboards.
+- **Manual Override**: Admins can force the thermostat to *heat* or *idle* from `/admin/override`, bypassing TRVs, sensors and schedules until it expires (duration chosen on the page, or none) or is switched back to automatic. The state is stored in the `heating_override` table (no row = automatic).
 - **Web UI & Admin Management**: Built using Twirl templates with the HMRC Design System (`play-frontend-hmrc`), featuring session-based authentication and role-based access control.
 
 ---
