@@ -12,187 +12,184 @@
 
 @defining(sensors.filter { case (sensor, target) => sensor.temperature < target }) { heatingSensors =>
 @defining(trvs.filter(_.runningState == RunningState.Heat)) { heatingTrvs =>
-@defining(heatingSensors.size + heatingTrvs.size) { heatRequests =>
-@defining(sensors.size + trvs.size - heatRequests) { idleDevices =>
-@main(title = "Heating dashboard") {
-  <div class="govuk-width-container">
-    <main class="govuk-main-wrapper" id="main-content">
+    @defining(heatingSensors.size + heatingTrvs.size) { heatRequests =>
+      @defining(sensors.size + trvs.size - heatRequests) { idleDevices =>
+        @main(title = "Heating dashboard") {
+          <div class="govuk-width-container">
+            <p class="govuk-body">
+              Current room temperatures, heat demand and thermostat state.
+            </p>
 
-      <p class="govuk-body">
-        Current room temperatures, heat demand and thermostat state.
-      </p>
-
-      <div class="govuk-grid-row">
-        <div class="govuk-grid-column-one-third">
-          <div class="govuk-summary-card">
-            <div class="govuk-summary-card__title-wrapper">
-              <h2 class="govuk-summary-card__title">Heat demand</h2>
-            </div>
-            <div class="govuk-summary-card__content">
-              <p class="govuk-heading-l">@heatRequests</p>
-              <p class="govuk-body">device@if(heatRequests > 1) {s} asking for heat</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="govuk-grid-column-one-third">
-          <div class="govuk-summary-card">
-            <div class="govuk-summary-card__title-wrapper">
-              <h2 class="govuk-summary-card__title">Idle</h2>
-            </div>
-            <div class="govuk-summary-card__content">
-              <p class="govuk-heading-l">@idleDevices</p>
-              <p class="govuk-body">device@if(idleDevices != 1) {s} idle</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="govuk-grid-column-one-third">
-          <div class="govuk-summary-card">
-            <div class="govuk-summary-card__title-wrapper">
-              <h2 class="govuk-summary-card__title">Thermostat</h2>
-            </div>
-            <div class="govuk-summary-card__content">
-              <p class="govuk-body">Mode:
-              @if(nest.traits.thermostatMode == ThermostatMode.HEAT) {
-                <strong class="govuk-tag govuk-tag--red">Winter / ON </strong>
-              } else {
-                <strong class="govuk-tag govuk-tag--green">
-                  Summer / OFF
-                </strong>
-              }
-              </p>
-              <p class="govuk-body">Status:
-              @if(nest.traits.hvacStatus == HvacStatus.HEATING) {
-                <strong class="govuk-tag govuk-tag--red">@nest.traits.hvacStatus</strong>
-              } else {
-                <strong class="govuk-tag govuk-tag--green">
-                  @nest.traits.hvacStatus
-                </strong>
-              }
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <h2 class="govuk-heading-l">Thermostat state</h2>
-
-      <dl class="govuk-summary-list govuk-!-margin-bottom-6">
-        <div class="govuk-summary-list__row">
-          <dt class="govuk-summary-list__key">Temperature</dt>
-          <dd class="govuk-summary-list__value">
-            @String.format("%.1f °C", nest.traits.temperatureCelsius)
-          </dd>
-        </div>
-        <div class="govuk-summary-list__row">
-          <dt class="govuk-summary-list__key">Mode</dt>
-          <dd class="govuk-summary-list__value">
-            @if(nest.traits.thermostatMode == ThermostatMode.HEAT) {
-              <strong class="govuk-tag govuk-tag--red">Winter / ON </strong>
-            } else {
-              <strong class="govuk-tag govuk-tag--green">
-                Summer / OFF
-              </strong>
-            }
-          </dd>
-        </div>
-        <div class="govuk-summary-list__row">
-          <dt class="govuk-summary-list__key">HVAC state</dt>
-          <dd class="govuk-summary-list__value">
-          @if(nest.traits.hvacStatus == HvacStatus.HEATING) {
-            <strong class="govuk-tag govuk-tag--red">Heating</strong>
-          } else {
-            <strong class="govuk-tag govuk-tag--green">
-              @nest.traits.hvacStatus
-            </strong>
-          }
-          </dd>
-        </div>
-        <div class="govuk-summary-list__row">
-          <dt class="govuk-summary-list__key">Heat setpoint</dt>
-          <dd class="govuk-summary-list__value">
-            @nest.traits.heatSetpointCelsius.fold("Unknown")(value => String.format("%.1f °C", value))
-          </dd>
-        </div>
-      </dl>
-
-      <h2 class="govuk-heading-l">Room temperatures</h2>
-
-      @if(sensors.isEmpty && trvs.isEmpty) {
-        <div class="govuk-inset-text">
-          No room device state has been received yet.
-        </div>
-      } else {
-        <div class="govuk-grid-row">
-          @for((sensor, target) <- sensors.sortBy(_._1.name)) {
-            <div class="govuk-grid-column-one-half">
-              <div class="govuk-summary-card">
-                <div class="govuk-summary-card__title-wrapper">
-                  <h3 class="govuk-summary-card__title">@sensor.name.split("/").last</h3>
+            <div class="govuk-grid-row">
+              <div class="govuk-grid-column-one-third">
+                <div class="govuk-summary-card">
+                  <div class="govuk-summary-card__title-wrapper">
+                    <h2 class="govuk-summary-card__title">Heat demand</h2>
+                  </div>
+                  <div class="govuk-summary-card__content">
+                    <p class="govuk-heading-l">@heatRequests</p>
+                    <p class="govuk-body">device@if(heatRequests > 1) {s} asking for heat</p>
+                  </div>
                 </div>
-                <div class="govuk-summary-card__content">
+              </div>
+
+              <div class="govuk-grid-column-one-third">
+                <div class="govuk-summary-card">
+                  <div class="govuk-summary-card__title-wrapper">
+                    <h2 class="govuk-summary-card__title">Idle</h2>
+                  </div>
+                  <div class="govuk-summary-card__content">
+                    <p class="govuk-heading-l">@idleDevices</p>
+                    <p class="govuk-body">device@if(idleDevices != 1) {s} idle</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="govuk-grid-column-one-third">
+                <div class="govuk-summary-card">
+                  <div class="govuk-summary-card__title-wrapper">
+                    <h2 class="govuk-summary-card__title">Thermostat</h2>
+                  </div>
+                  <div class="govuk-summary-card__content">
+                    <p class="govuk-body">Mode:
+                    @if(nest.traits.thermostatMode == ThermostatMode.HEAT) {
+                      <strong class="govuk-tag govuk-tag--red">Winter / ON </strong>
+                    } else {
+                      <strong class="govuk-tag govuk-tag--green">
+                        Summer / OFF
+                      </strong>
+                    }
+                    </p>
+                    <p class="govuk-body">Status:
+                    @if(nest.traits.hvacStatus == HvacStatus.HEATING) {
+                      <strong class="govuk-tag govuk-tag--red">@nest.traits.hvacStatus</strong>
+                    } else {
+                      <strong class="govuk-tag govuk-tag--green">
+                        @nest.traits.hvacStatus
+                      </strong>
+                    }
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <h2 class="govuk-heading-l">Thermostat state</h2>
+
+            <dl class="govuk-summary-list govuk-!-margin-bottom-6">
+              <div class="govuk-summary-list__row">
+                <dt class="govuk-summary-list__key">Temperature</dt>
+                <dd class="govuk-summary-list__value">
+                  @String.format("%.1f °C", nest.traits.temperatureCelsius)
+                </dd>
+              </div>
+              <div class="govuk-summary-list__row">
+                <dt class="govuk-summary-list__key">Mode</dt>
+                <dd class="govuk-summary-list__value">
+                @if(nest.traits.thermostatMode == ThermostatMode.HEAT) {
+                  <strong class="govuk-tag govuk-tag--red">Winter / ON </strong>
+                } else {
+                  <strong class="govuk-tag govuk-tag--green">
+                    Summer / OFF
+                  </strong>
+                }
+                </dd>
+              </div>
+              <div class="govuk-summary-list__row">
+                <dt class="govuk-summary-list__key">HVAC state</dt>
+                <dd class="govuk-summary-list__value">
+                @if(nest.traits.hvacStatus == HvacStatus.HEATING) {
+                  <strong class="govuk-tag govuk-tag--red">Heating</strong>
+                } else {
+                  <strong class="govuk-tag govuk-tag--green">
+                    @nest.traits.hvacStatus
+                  </strong>
+                }
+                </dd>
+              </div>
+              <div class="govuk-summary-list__row">
+                <dt class="govuk-summary-list__key">Heat setpoint</dt>
+                <dd class="govuk-summary-list__value">
+                  @nest.traits.heatSetpointCelsius.fold("Unknown")(value => String.format("%.1f °C", value))
+                </dd>
+              </div>
+            </dl>
+
+            <h2 class="govuk-heading-l">Room temperatures</h2>
+
+          @if(sensors.isEmpty && trvs.isEmpty) {
+            <div class="govuk-inset-text">
+              No room device state has been received yet.
+            </div>
+          } else {
+            <div class="govuk-grid-row">
+            @for((sensor, target) <- sensors.sortBy(_._1.name)) {
+              <div class="govuk-grid-column-one-half">
+                <div class="govuk-summary-card">
+                  <div class="govuk-summary-card__title-wrapper">
+                    <h3 class="govuk-summary-card__title">@sensor.name.split("/").last</h3>
+                  </div>
+                  <div class="govuk-summary-card__content">
                   @if(sensor.temperature < target) {
                     <strong class="govuk-tag govuk-tag--red">Asking for heat</strong>
                   } else {
                     <strong class="govuk-tag govuk-tag--green">Idle</strong>
                   }
-                  <dl class="govuk-summary-list govuk-!-margin-top-4">
-                    <div class="govuk-summary-list__row">
-                      <dt class="govuk-summary-list__key">Temperature</dt>
-                      <dd class="govuk-summary-list__value">@String.format("%.1f °C", sensor.temperature)</dd>
-                    </div>
-                    <div class="govuk-summary-list__row">
-                      <dt class="govuk-summary-list__key">Target</dt>
-                      <dd class="govuk-summary-list__value">@String.format("%.1f °C", target)</dd>
-                    </div>
-                    <div class="govuk-summary-list__row">
-                      <dt class="govuk-summary-list__key">Humidity</dt>
-                      <dd class="govuk-summary-list__value">@sensor.humidity%</dd>
-                    </div>
-                  </dl>
+                    <dl class="govuk-summary-list govuk-!-margin-top-4">
+                      <div class="govuk-summary-list__row">
+                        <dt class="govuk-summary-list__key">Temperature</dt>
+                        <dd class="govuk-summary-list__value">@String.format("%.1f °C", sensor.temperature)</dd>
+                      </div>
+                      <div class="govuk-summary-list__row">
+                        <dt class="govuk-summary-list__key">Target</dt>
+                        <dd class="govuk-summary-list__value">@String.format("%.1f °C", target)</dd>
+                      </div>
+                      <div class="govuk-summary-list__row">
+                        <dt class="govuk-summary-list__key">Humidity</dt>
+                        <dd class="govuk-summary-list__value">@sensor.humidity%</dd>
+                      </div>
+                    </dl>
+                  </div>
                 </div>
               </div>
-            </div>
-          }
+            }
 
-          @for(trv <- trvs.sortBy(_.name)) {
-            <div class="govuk-grid-column-one-half">
-              <div class="govuk-summary-card">
-                <div class="govuk-summary-card__title-wrapper">
-                  <h3 class="govuk-summary-card__title">@trv.name</h3>
-                </div>
-                <div class="govuk-summary-card__content">
+            @for(trv <- trvs.sortBy(_.name)) {
+              <div class="govuk-grid-column-one-half">
+                <div class="govuk-summary-card">
+                  <div class="govuk-summary-card__title-wrapper">
+                    <h3 class="govuk-summary-card__title">@trv.name</h3>
+                  </div>
+                  <div class="govuk-summary-card__content">
                   @if(trv.runningState == RunningState.Heat) {
                     <strong class="govuk-tag govuk-tag--red">Asking for heat</strong>
                   } else {
                     <strong class="govuk-tag govuk-tag--green">Idle</strong>
                   }
-                  <dl class="govuk-summary-list govuk-!-margin-top-4">
-                    <div class="govuk-summary-list__row">
-                      <dt class="govuk-summary-list__key">Temperature</dt>
-                      <dd class="govuk-summary-list__value">@String.format("%.1f °C", trv.localTemperature)</dd>
-                    </div>
-                    <div class="govuk-summary-list__row">
-                      <dt class="govuk-summary-list__key">Setpoint</dt>
-                      <dd class="govuk-summary-list__value">@String.format("%.1f °C", trv.occupiedHeatingSetpoint)</dd>
-                    </div>
-                    <div class="govuk-summary-list__row">
-                      <dt class="govuk-summary-list__key">Running state</dt>
-                      <dd class="govuk-summary-list__value">@trv.runningState</dd>
-                    </div>
-                  </dl>
+                    <dl class="govuk-summary-list govuk-!-margin-top-4">
+                      <div class="govuk-summary-list__row">
+                        <dt class="govuk-summary-list__key">Temperature</dt>
+                        <dd class="govuk-summary-list__value">@String.format("%.1f °C", trv.localTemperature)</dd>
+                      </div>
+                      <div class="govuk-summary-list__row">
+                        <dt class="govuk-summary-list__key">Setpoint</dt>
+                        <dd
+                          class="govuk-summary-list__value">@String.format("%.1f °C", trv.occupiedHeatingSetpoint)</dd>
+                      </div>
+                      <div class="govuk-summary-list__row">
+                        <dt class="govuk-summary-list__key">Running state</dt>
+                        <dd class="govuk-summary-list__value">@trv.runningState</dd>
+                      </div>
+                    </dl>
+                  </div>
                 </div>
               </div>
+            }
             </div>
           }
-        </div>
+          </div>
+        }
       }
-
-    </main>
-  </div>
-}
-}
-}
-}
+    }
+  }
 }
