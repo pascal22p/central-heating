@@ -12,10 +12,13 @@ trait AuthJourney {
   val authWithAdminRight: ActionBuilder[AuthenticatedRequest, AnyContent]
 
   val guestAccess: ActionBuilder[AuthenticatedRequest, AnyContent]
+
+  val apiAccess: ActionBuilder[AuthenticatedRequest, AnyContent]
 }
 
 class AuthJourneyImpl @Inject() (
     authAction: AuthAction,
+    authApiAction: AuthApiAction,
     adminFilter: AdminFilter
 ) extends AuthJourney {
 
@@ -23,4 +26,6 @@ class AuthJourneyImpl @Inject() (
     authAction.andThen(adminFilter)
 
   val guestAccess: ActionBuilder[AuthenticatedRequest, AnyContent] = authAction
+
+  val apiAccess: ActionBuilder[AuthenticatedRequest, AnyContent] = authApiAction
 }

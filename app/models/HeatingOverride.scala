@@ -1,10 +1,10 @@
 package models
 
-import anorm.*
-
-import java.time.{Instant, LocalDateTime, ZoneId, ZoneOffset}
+import java.time.{ Instant, LocalDateTime, ZoneId, ZoneOffset }
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+
+import anorm.*
 
 /** A manual override of the automatic heating control. No stored override means the heating is automatic. */
 enum HeatingOverride derives CanEqual {
@@ -18,8 +18,9 @@ enum HeatingOverride derives CanEqual {
 
 object HeatingOverride {
   val rowParser: RowParser[Option[HeatingOverrideState]] =
-    (SqlParser.str("mode") ~ SqlParser.get[Option[LocalDateTime]]("expires_at")).map { case mode ~ expiresAt =>
-      HeatingOverride.fromDbValue(mode).map(HeatingOverrideState(_, expiresAt.map(_.toInstant(ZoneOffset.UTC))))
+    (SqlParser.str("mode") ~ SqlParser.get[Option[LocalDateTime]]("expires_at")).map {
+      case mode ~ expiresAt =>
+        HeatingOverride.fromDbValue(mode).map(HeatingOverrideState(_, expiresAt.map(_.toInstant(ZoneOffset.UTC))))
     }
 
   def fromDbValue(value: String): Option[HeatingOverride] =
@@ -31,9 +32,9 @@ object HeatingOverride {
 
   /** Durations (in minutes) offered to the user; the empty option means "until switched back to automatic". */
   val durationOptions: Seq[(Int, String)] = Seq(
-    30   -> "30 minutes",
-    60   -> "1 hour",
-    120  -> "2 hours"
+    30  -> "30 minutes",
+    60  -> "1 hour",
+    120 -> "2 hours"
   )
 
   val defaultDurationMinutes: Int = 30

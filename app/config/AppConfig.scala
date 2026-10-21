@@ -21,6 +21,9 @@ class AppConfig @Inject() (configuration: Configuration) {
   val appName: String    = configuration.get[String]("appName")
   val commitHash: String = sys.props.getOrElse("git.commit.hash", "unknown")
 
+  lazy val apiBearerToken: String =
+    configuration.get[String]("api.bearer-token")
+
   lazy val cacheQueriesTtl: Int =
     configuration.get[Int]("db-options.cache-queries.ttlInMinutes")
 

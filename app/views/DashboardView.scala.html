@@ -167,7 +167,7 @@
               <div class="govuk-grid-column-one-half">
                 <div class="govuk-summary-card">
                   <div class="govuk-summary-card__title-wrapper">
-                    <h3 class="govuk-summary-card__title">@trv.name</h3>
+                    <h3 class="govuk-summary-card__title">@trv.name.split("/").last</h3>
                   </div>
                   <div class="govuk-summary-card__content">
                   @if(trv.runningState == RunningState.Heat) {
