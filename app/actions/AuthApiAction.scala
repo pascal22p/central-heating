@@ -34,7 +34,7 @@ class AuthApiActionImpl @Inject() (
 
     logger.info(s"AuthAction with session ID: $sessionId")
 
-    val authToken = request.headers.toMap.get("X-Homebridge-Authorization").flatMap(_.headOption)
+    val authToken = request.headers.get("X-Homebridge-Authorization")
 
     authToken.fold(Future.successful(Unauthorized("Missing bearer token"))) { token =>
       if (token != appConfig.apiBearerToken) {
