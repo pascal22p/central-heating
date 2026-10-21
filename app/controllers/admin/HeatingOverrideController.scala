@@ -48,7 +48,7 @@ final class HeatingOverrideController @Inject() (
     }
 
     val update: Option[Future[Unit]] = (field("mode"), duration) match {
-      case (Some("auto"), _)       => Some(clear())
+      case (Some("auto"), _)        => Some(clear())
       case (Some("heat"), Right(d)) => Some(set(HeatingOverride.Heat, d))
       case (Some("idle"), Right(d)) => Some(set(HeatingOverride.Idle, d))
       case _                        => None

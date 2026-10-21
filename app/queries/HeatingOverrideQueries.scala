@@ -1,11 +1,11 @@
 package queries
 
-import javax.inject.{Inject, Singleton}
+import javax.inject.{ Inject, Singleton }
 import play.api.db.Database
+import scala.concurrent.{ ExecutionContext, Future }
 
-import scala.concurrent.{ExecutionContext, Future}
 import anorm.*
-import models.{DatabaseExecutionContext, HeatingOverride, HeatingOverrideState}
+import models.{ DatabaseExecutionContext, HeatingOverride, HeatingOverrideState }
 
 @Singleton
 class HeatingOverrideQueries @Inject() (

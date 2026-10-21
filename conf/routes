@@ -4,6 +4,7 @@
 # ~~~~
 ->         /hmrc-frontend                         hmrcfrontend.Routes
 ->         /admin                                 admin.Routes
+->         /api                                   api.Routes
 
 GET     /                                         controllers.HomeController.index()
 

@@ -1,0 +1,3 @@
+GET     /nest/status                  controllers.api.NestController.status()
+PUT     /nest/on                      controllers.api.NestController.on()
+PUT     /nest/off                     controllers.api.NestController.off()
