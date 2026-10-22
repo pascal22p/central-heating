@@ -1,5 +1,5 @@
 package models.mqtt
 
 enum TemperatureSensorSelection {
-  case Internal
+  case Internal, Remote, RemoteOffline
 }
