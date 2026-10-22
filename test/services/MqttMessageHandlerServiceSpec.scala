@@ -61,7 +61,9 @@ class MqttMessageHandlerServiceSpec extends BaseSpec {
         case SystemMode.Auto => "auto"
       }),
       "temperature_sensor_select" -> (trv.temperatureSensorSelection match {
-        case TemperatureSensorSelection.Internal => "internal"
+        case TemperatureSensorSelection.Internal      => "internal"
+        case TemperatureSensorSelection.Remote        => "remote_temperature"
+        case TemperatureSensorSelection.RemoteOffline => "remote_source_offline"
       }),
       "open_window_detected" -> trv.openWindowDetected,
       "child_lock"           -> (trv.childLock match {
