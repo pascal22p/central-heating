@@ -111,6 +111,12 @@ object Trv {
         temperatureSensorSelection = temperatureSensorSelectionValue match {
           case "internal" =>
             TemperatureSensorSelection.Internal
+          case "local_temperature" =>
+            TemperatureSensorSelection.Internal
+          case "remote_temperature" =>
+            TemperatureSensorSelection.Remote
+          case "remote_source_offline" =>
+            TemperatureSensorSelection.RemoteOffline
           case value =>
             throw new IllegalArgumentException(
               s"Unknown temperature_sensor_select: $value"
