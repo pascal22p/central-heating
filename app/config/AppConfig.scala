@@ -4,6 +4,7 @@ import java.time.LocalTime
 import javax.inject.Inject
 import play.api.Configuration
 import scala.annotation.unused
+import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.*
 
 import models.{ ScheduleDay, SchedulePeriod }
@@ -135,8 +136,11 @@ class AppConfig @Inject() (configuration: Configuration) {
   lazy val heatingControlIsEnabled: Boolean =
     configuration.get[Boolean]("heating-demand.isEnabled")
 
-  lazy val heatingControlOffset: Double =
-    configuration.get[Double]("heating-demand.offset")
+  lazy val heatingDemandMinimumOn: FiniteDuration =
+    configuration.get[FiniteDuration]("heating-demand.minimum-on")
+
+  lazy val heatingDemandMinimumOff: FiniteDuration =
+    configuration.get[FiniteDuration]("heating-demand.minimum-off")
 
   lazy val sensorSchedules: Map[String, ScheduleDay] = {
     val config = configuration.underlying.getConfig("sensor-schedules")
