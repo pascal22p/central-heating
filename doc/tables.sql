@@ -64,3 +64,11 @@ CREATE TABLE `heating_override` (
                                     CONSTRAINT `heating_override_singleton`
                                         CHECK (`id` = 1)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+DROP TABLE IF EXISTS `sensor_heat_demand`;
+CREATE TABLE `sensor_heat_demand` (
+                                      `topic` varchar(255) NOT NULL,
+                                      `demand` enum('heat','idle') NOT NULL,
+                                      `changed_at` datetime NOT NULL,
+                                      PRIMARY KEY (`topic`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

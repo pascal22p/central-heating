@@ -14,10 +14,10 @@ import org.scalatestplus.mockito.MockitoSugar
 import cats.data.EitherT
 import config.AppConfig
 import connectors.NestConnector
-import models.{ HeatingOverride, ScheduleDay, SchedulePeriod }
+import models.{ HeatDemand, HeatingOverride, ScheduleDay, SchedulePeriod, SensorHeatDemand }
 import models.mqtt.{ RunningState, TemperatureSensor, Trv }
 import models.nest.{ HvacStatus, NestDevice, NestTraits, ThermostatMode }
-import queries.{ HeatingOverrideQueries, ScheduleQueries }
+import queries.{ HeatingOverrideQueries, ScheduleQueries, SensorHeatDemandQueries }
 import testUtils.BaseSpec
 
 class HeatingControlServiceSpec extends BaseSpec with MockitoSugar {
@@ -28,6 +28,7 @@ class HeatingControlServiceSpec extends BaseSpec with MockitoSugar {
   private val activeTemperature  = 22.0
   private val standbyTemperature = 16.0
   private val scheduleTarget     = 20.0
+  private val hysteresis         = 0.5
 
   // The clock is fixed at 12:00, so this period is "now"
   private val currentPeriod =
@@ -38,32 +39,46 @@ class HeatingControlServiceSpec extends BaseSpec with MockitoSugar {
     ScheduleDay(periods = periods)
 
   private class Fixture(heatingEnabled: Boolean = true, trvEnabled: Boolean = true, sensorEnabled: Boolean = true) {
-    val appConfig: AppConfig                    = mock[AppConfig]
-    val nestConnector: NestConnector            = mock[NestConnector]
-    val devicesService: DevicesService          = mock[DevicesService]
-    val scheduleQueries: ScheduleQueries        = mock[ScheduleQueries]
-    val overrideQueries: HeatingOverrideQueries = mock[HeatingOverrideQueries]
+    val appConfig: AppConfig                         = mock[AppConfig]
+    val nestConnector: NestConnector                 = mock[NestConnector]
+    val devicesService: DevicesService               = mock[DevicesService]
+    val scheduleQueries: ScheduleQueries             = mock[ScheduleQueries]
+    val overrideQueries: HeatingOverrideQueries      = mock[HeatingOverrideQueries]
+    val sensorDemandQueries: SensorHeatDemandQueries = mock[SensorHeatDemandQueries]
 
-    val clock: Clock = Clock.fixed(Instant.parse("2026-01-01T12:00:00Z"), ZoneOffset.UTC)
+    val now: Instant = Instant.parse("2026-01-01T12:00:00Z")
+    val clock: Clock = Clock.fixed(now, ZoneOffset.UTC)
 
     when(appConfig.heatingControlIsEnabled).thenReturn(heatingEnabled)
     when(appConfig.trvControlIsEnabled).thenReturn(trvEnabled)
     when(appConfig.sensorControlIsEnabled).thenReturn(sensorEnabled)
     when(appConfig.heatingDemandActiveTemperatureCelsius).thenReturn(activeTemperature)
     when(appConfig.heatingDemandStandbyTemperatureCelsius).thenReturn(standbyTemperature)
+    when(appConfig.heatingControlHysteresis).thenReturn(hysteresis)
 
     when(nestConnector.setTemperature(anyDouble())(using any()))
       .thenReturn(EitherT.rightT[Future, UpstreamErrorResponse](()))
 
     when(overrideQueries.getOverride).thenReturn(Future.successful(None))
 
+    // By default a sensor has no stored demand (so it is idle)
+    when(sensorDemandQueries.get(any[String]())).thenReturn(Future.successful(None))
+    when(sensorDemandQueries.set(any[String](), any[HeatDemand](), any[Instant]())).thenReturn(Future.unit)
+
     when(devicesService.getTrvs).thenReturn(Future.successful(Seq.empty[Trv]))
     when(devicesService.getTemperatureSensors(using any())).thenReturn(Future.successful(Seq.empty[TemperatureSensor]))
 
+    private val nestService = new NestService(appConfig, nestConnector, overrideQueries)(using global)
+
     val sut =
-      new HeatingControlService(appConfig, nestConnector, devicesService, scheduleQueries, overrideQueries, clock)(
-        using scala.concurrent.ExecutionContext.global
-      )
+      new HeatingControlService(
+        appConfig,
+        nestService,
+        devicesService,
+        scheduleQueries,
+        sensorDemandQueries,
+        clock
+      )(using global)
 
     def givenNestDevice(
         name: String = "Name",
@@ -81,6 +96,13 @@ class HeatingControlServiceSpec extends BaseSpec with MockitoSugar {
 
     def givenSensors(sensors: TemperatureSensor*): OngoingStubbing[Future[Seq[TemperatureSensor]]] =
       when(devicesService.getTemperatureSensors).thenReturn(Future.successful(sensors))
+
+    def givenStoredDemand(
+        sensorName: String,
+        demand: HeatDemand,
+        changedAt: Instant = Instant.parse("2026-01-01T10:00:00Z")
+    ): OngoingStubbing[Future[Option[SensorHeatDemand]]] =
+      when(sensorDemandQueries.get(sensorName)).thenReturn(Future.successful(Some(SensorHeatDemand(demand, changedAt))))
 
     def givenSchedule(sensorName: String, periods: SchedulePeriod*): OngoingStubbing[Future[ScheduleDay]] =
       when(scheduleQueries.getSchedule(sensorName)).thenReturn(Future.successful(schedule(periods*)))
@@ -164,14 +186,12 @@ class HeatingControlServiceSpec extends BaseSpec with MockitoSugar {
       verifyThermostatNotChanged()
     }
 
-    "not query the devices when the heating is already off" in new Fixture {
+    "not change the thermostat when the heating is already off" in new Fixture {
       givenNestDevice(traits = fakeNestTraits(thermostatMode = ThermostatMode.HEAT, hvacStatus = HvacStatus.OFF))
 
       sut.onTrvUpdate(fakeTrv("trv1", runningState = RunningState.Idle)).futureValue mustBe (())
 
       verifyThermostatNotChanged()
-      verifyNoInteractions(devicesService)
-      verifyNoInteractions(scheduleQueries)
     }
 
     "not turn the heating off when the thermostat is not in HEAT mode" in new Fixture {
@@ -303,6 +323,64 @@ class HeatingControlServiceSpec extends BaseSpec with MockitoSugar {
       verifyHeatingTurnedOff()
     }
 
+    "keep heating inside the hysteresis band when the sensor was already requesting heat" in new Fixture {
+      givenSchedule("sensor1", currentPeriod)
+      givenStoredDemand("sensor1", HeatDemand.Heat)
+      givenNestDevice(traits = fakeNestTraits(thermostatMode = ThermostatMode.HEAT, hvacStatus = HvacStatus.HEATING))
+      givenSensors(fakeTemperatureSensor("sensor1", 20.4))
+      givenTrvs(fakeTrv("trv1", runningState = RunningState.Idle))
+
+      // 20.4 is above the target but below the upper bound (20.5)
+      sut.onTemperatureSensorUpdate(fakeTemperatureSensor("sensor1", 20.4)).futureValue mustBe (())
+
+      verifyThermostatNotChanged()
+      verify(sensorDemandQueries, never()).set(any[String](), any[HeatDemand](), any[Instant]())
+    }
+
+    "turn the heating off once the sensor reaches the upper bound of the hysteresis band" in new Fixture {
+      givenSchedule("sensor1", currentPeriod)
+      givenStoredDemand("sensor1", HeatDemand.Heat)
+      givenNestDevice(traits = fakeNestTraits(thermostatMode = ThermostatMode.HEAT, hvacStatus = HvacStatus.HEATING))
+      givenSensors(fakeTemperatureSensor("sensor1", 20.6))
+      givenTrvs(fakeTrv("trv1", runningState = RunningState.Idle))
+
+      sut.onTemperatureSensorUpdate(fakeTemperatureSensor("sensor1", 20.6)).futureValue mustBe (())
+
+      verifyHeatingTurnedOff()
+      verify(sensorDemandQueries).set(eqTo("sensor1"), eqTo(HeatDemand.Idle), eqTo(now))
+    }
+
+    "not turn the heating on when idle and the sensor is inside the hysteresis band" in new Fixture {
+      givenSchedule("sensor1", currentPeriod)
+      givenStoredDemand("sensor1", HeatDemand.Idle)
+      givenNestDevice(traits = fakeNestTraits(thermostatMode = ThermostatMode.HEAT, hvacStatus = HvacStatus.OFF))
+
+      sut.onTemperatureSensorUpdate(fakeTemperatureSensor("sensor1", 19.6)).futureValue mustBe (())
+
+      verifyThermostatNotChanged()
+      verify(sensorDemandQueries, never()).set(any[String](), any[HeatDemand](), any[Instant]())
+    }
+
+    "store the new demand with the current time when the sensor starts requesting heat" in new Fixture {
+      givenSchedule("sensor1", currentPeriod)
+      givenStoredDemand("sensor1", HeatDemand.Idle)
+      givenNestDevice(traits = fakeNestTraits(thermostatMode = ThermostatMode.HEAT, hvacStatus = HvacStatus.OFF))
+
+      sut.onTemperatureSensorUpdate(fakeTemperatureSensor("sensor1", 19.0)).futureValue mustBe (())
+
+      verifyHeatingTurnedOn()
+      verify(sensorDemandQueries).set(eqTo("sensor1"), eqTo(HeatDemand.Heat), eqTo(now))
+    }
+
+    "store the idle demand the first time a sensor is seen" in new Fixture {
+      givenSchedule("sensor1", currentPeriod)
+      givenNestDevice(traits = fakeNestTraits(thermostatMode = ThermostatMode.HEAT, hvacStatus = HvacStatus.OFF))
+
+      sut.onTemperatureSensorUpdate(fakeTemperatureSensor("sensor1", 20.0)).futureValue mustBe (())
+
+      verify(sensorDemandQueries).set(eqTo("sensor1"), eqTo(HeatDemand.Idle), eqTo(now))
+    }
+
     "complete successfully when the schedule lookup fails" in new Fixture {
       when(scheduleQueries.getSchedule(any[String]()))
         .thenReturn(Future.failed(new RuntimeException("boom")))
@@ -326,12 +404,12 @@ class HeatingControlServiceSpec extends BaseSpec with MockitoSugar {
 
     "turn the heating on for a sensor above its target when the override is heat" in new Fixture {
       givenOverride(HeatingOverride.Heat)
+      givenSchedule("sensor1", currentPeriod)
       givenNestDevice(traits = fakeNestTraits(thermostatMode = ThermostatMode.HEAT, hvacStatus = HvacStatus.OFF))
 
       sut.onTemperatureSensorUpdate(fakeTemperatureSensor("sensor1", 25.0)).futureValue mustBe (())
 
       verifyHeatingTurnedOn()
-      verifyNoInteractions(scheduleQueries)
     }
 
     "turn the heating off for a heat TRV update when the override is idle" in new Fixture {

@@ -135,8 +135,8 @@ class AppConfig @Inject() (configuration: Configuration) {
   lazy val heatingControlIsEnabled: Boolean =
     configuration.get[Boolean]("heating-demand.isEnabled")
 
-  lazy val heatingControlOffset: Double =
-    configuration.get[Double]("heating-demand.offset")
+  lazy val heatingControlHysteresis: Double =
+    configuration.get[Double]("heating-demand.hysteresis")
 
   lazy val sensorSchedules: Map[String, ScheduleDay] = {
     val config = configuration.underlying.getConfig("sensor-schedules")
