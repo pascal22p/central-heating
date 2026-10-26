@@ -65,10 +65,10 @@ CREATE TABLE `heating_override` (
                                         CHECK (`id` = 1)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-DROP TABLE IF EXISTS `sensor_heat_demand`;
-CREATE TABLE `sensor_heat_demand` (
-                                      `topic` varchar(255) NOT NULL,
-                                      `demand` enum('heat','idle') NOT NULL,
-                                      `changed_at` datetime NOT NULL,
-                                      PRIMARY KEY (`topic`)
+DROP TABLE IF EXISTS `thermostat_state`;
+CREATE TABLE `thermostat_state` (
+                                    `device` varchar(255) NOT NULL,
+                                    `state` enum('heat','idle') NOT NULL,
+                                    `changed_at` datetime NOT NULL,
+                                    PRIMARY KEY (`device`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

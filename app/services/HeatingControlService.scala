@@ -10,9 +10,9 @@ import uk.gov.hmrc.http.{ HeaderCarrier, UpstreamErrorResponse }
 import cats.data.EitherT
 import cats.implicits.toTraverseOps
 import config.AppConfig
-import models.{ HeatDemand, HeatingOverride, LoggingWithRequest, SensorHeatDemand }
+import models.{ HeatingOverride, LoggingWithRequest }
 import models.mqtt.{ RunningState, TemperatureSensor, Trv }
-import queries.{ ScheduleQueries, SensorHeatDemandQueries }
+import queries.ScheduleQueries
 import services.NestService.Result
 
 @Singleton
@@ -21,37 +21,11 @@ class HeatingControlService @Inject() (
     nestService: NestService,
     devicesService: DevicesService,
     scheduleQueries: ScheduleQueries,
-    sensorHeatDemandQueries: SensorHeatDemandQueries,
     clock: Clock
 )(implicit ec: ExecutionContext)
     extends LoggingWithRequest {
 
   private val noAction: Result = EitherT.rightT(())
-
-  /** Applies the hysteresis to the sensor reading, starting from the stored demand (idle when there is none). */
-  private def nextDemand(stored: Option[SensorHeatDemand], sensor: TemperatureSensor, target: Double): HeatDemand =
-    HeatDemand.next(
-      stored.map(_.demand).getOrElse(HeatDemand.Idle),
-      sensor.temperature,
-      target,
-      appConfig.heatingControlHysteresis
-    )
-
-  /**
-   * Used when a sensor reports: works out its demand and stores it, with the time, only when it differs from the
-   * stored one, so `changed_at` is always the time of the last change.
-   */
-  private def updateSensorDemand(sensor: TemperatureSensor, target: Double): Future[HeatDemand] =
-    for {
-      stored <- sensorHeatDemandQueries.get(sensor.name)
-      next = nextDemand(stored, sensor, target)
-      _ <-
-        if (stored.exists(_.demand == next)) {
-          Future.unit
-        } else {
-          sensorHeatDemandQueries.set(sensor.name, next, clock.instant())
-        }
-    } yield next
 
   def onTrvUpdate(trv: Trv)(implicit hc: HeaderCarrier): Future[Unit] =
     execute("Trv", trv.name, appConfig.heatingControlIsEnabled && appConfig.trvControlIsEnabled) {
@@ -69,12 +43,11 @@ class HeatingControlService @Inject() (
   def onTemperatureSensorUpdate(sensor: TemperatureSensor)(implicit hc: HeaderCarrier): Future[Unit] =
     execute("Sensor", sensor.name, appConfig.heatingControlIsEnabled && appConfig.sensorControlIsEnabled) {
       EitherT.liftF[Future, UpstreamErrorResponse, Double](targetTemperature(sensor.name)).flatMap { target =>
-        EitherT.liftF[Future, UpstreamErrorResponse, HeatDemand](updateSensorDemand(sensor, target)).flatMap {
-          case HeatDemand.Heat =>
-            val details = s"sensor ${sensor.temperature}deg, target ${target}deg"
-            nestService.turnOn(s"Heat requested by ${sensor.name} ($details)")
-          case HeatDemand.Idle =>
-            turnOffUnlessRequested(s"Idle requested by ${sensor.name}")
+        if (sensor.temperature < target) {
+          val details = s"sensor ${sensor.temperature}deg, target ${target}deg"
+          nestService.turnOn(s"Heat requested by ${sensor.name} ($details)")
+        } else {
+          turnOffUnlessRequested(s"Idle requested by ${sensor.name}")
         }
       }
     }
@@ -134,13 +107,9 @@ class HeatingControlService @Inject() (
     for {
       sensors <- devicesService.getTemperatureSensors
       targets <- sensors.traverse(s => targetTemperature(s.name).map(s -> _))
-      demands <- targets.traverse {
-        case (s, target) =>
-          sensorHeatDemandQueries.get(s.name).map(stored => s.name -> nextDemand(stored, s, target))
-      }
-      trvs <- devicesService.getTrvs
+      trvs    <- devicesService.getTrvs
     } yield {
-      val sensorsWanting = demands.collect { case (name, HeatDemand.Heat) => name }
+      val sensorsWanting = targets.collect { case (s, target) if s.temperature < target => s.name }
       val trvsWanting    = trvs.filter(_.runningState == RunningState.Heat).map(_.name)
       sensorsWanting ++ trvsWanting
     }
