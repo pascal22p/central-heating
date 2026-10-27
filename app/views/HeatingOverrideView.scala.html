@@ -40,7 +40,7 @@
     until the override expires or you switch back to automatic.
   </p>
 
-  @helper.form(action = controllers.admin.routes.HeatingOverrideController.save) {
+  @helper.form(action = controllers.routes.HeatingOverrideController.save) {
     @helper.CSRF.formField
 
     <div class="govuk-form-group">

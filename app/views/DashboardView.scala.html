@@ -76,7 +76,7 @@
                       case Some(HeatingOverrideState(HeatingOverride.Idle, expiresAt)) => { <strong class="govuk-tag govuk-tag--blue">Override: idle</strong> @expiresAt.map(at => s"until ${HeatingOverrideState.formatExpiry(at)}") }
                       case None => { <strong class="govuk-tag govuk-tag--green">Automatic</strong> }
                     }
-                    <a class="govuk-link govuk-!-margin-left-2" href="@controllers.admin.routes.HeatingOverrideController.show.url">Change</a>
+                    <a class="govuk-link govuk-!-margin-left-2" href="@controllers.routes.HeatingOverrideController.show.url">Change</a>
                     </p>
                   </div>
                 </div>

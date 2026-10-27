@@ -1,4 +1,4 @@
-package controllers.admin
+package controllers
 
 import javax.inject.{ Inject, Singleton }
 import play.api.i18n.I18nSupport
@@ -25,13 +25,15 @@ final class HeatingOverrideController @Inject() (
     extends AbstractController(cc)
     with I18nSupport {
 
-  def show: Action[AnyContent] = authJourney.authWithAdminRight.async { implicit request =>
+  def show: Action[AnyContent] = authJourney.guestAccess.async { implicit request =>
     heatingOverrideQueries.getOverrideState.map { current =>
       Ok(heatingOverrideView(current))
     }
   }
 
-  def save: Action[AnyContent] = authJourney.authWithAdminRight.async { implicit request =>
+  // intentionally not using admin right to be more easily accessible locally.
+  // From the Internet the entire app is restricted using nginx auth request
+  def save: Action[AnyContent] = authJourney.guestAccess.async { implicit request =>
     given HeaderCarrier = HeaderCarrierConverter.fromRequestAndSession(request, request.session)
 
     def field(name: String): Option[String] =
@@ -56,7 +58,7 @@ final class HeatingOverrideController @Inject() (
 
     update match {
       case Some(done) =>
-        done.map(_ => Redirect(controllers.admin.routes.HeatingOverrideController.show))
+        done.map(_ => Redirect(controllers.routes.HeatingOverrideController.show))
       case None =>
         val message = duration.fold(identity, _ => "Choose heat, idle or automatic.")
         heatingOverrideQueries.getOverrideState.map { current =>
