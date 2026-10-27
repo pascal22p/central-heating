@@ -9,7 +9,7 @@ import scala.concurrent.{ ExecutionContext, Future }
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.http.HeaderCarrierConverter
 
-import actions.AuthAction
+import actions.AuthJourney
 import config.AppConfig
 import connectors.NestConnector
 import models.mqtt.TemperatureSensor
@@ -20,7 +20,7 @@ import views.html.DashboardView
 @Singleton
 class HomeController @Inject() (
     val controllerComponents: ControllerComponents,
-    authAction: AuthAction,
+    authAction: AuthJourney,
     appConfig: AppConfig,
     nestConnector: NestConnector,
     devicesService: DevicesService,
@@ -32,7 +32,7 @@ class HomeController @Inject() (
     extends BaseController
     with I18nSupport {
 
-  def index(): Action[AnyContent] = authAction.async { implicit authenticatedRequest =>
+  def index(): Action[AnyContent] = authAction.guestAccess.async { implicit authenticatedRequest =>
     given HeaderCarrier =
       HeaderCarrierConverter.fromRequestAndSession(authenticatedRequest, authenticatedRequest.session)
 

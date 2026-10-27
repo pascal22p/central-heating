@@ -13,6 +13,9 @@ GET     /nest                  controllers.NestController.index()
 GET     /trvs                         controllers.TrvController.index()
 GET     /sensors                         controllers.TemperatureSensorController.index()
 
+GET   /override   controllers.HeatingOverrideController.show
+POST  /override   controllers.HeatingOverrideController.save
+
 GET     /login                                    controllers.SessionController.loginOnLoad(redirectUrl: String)
 POST    /login                                    controllers.SessionController.loginOnSubmit()
 GET     /logout                                   controllers.SessionController.logoutOnLoad()
