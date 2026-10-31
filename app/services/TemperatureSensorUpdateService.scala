@@ -28,19 +28,22 @@ class TemperatureSensorUpdateService @Inject() (
   }
 
   def checkExternalSensor(trv: Trv)(implicit hc: HeaderCarrier): OptionT[Future, Unit] = {
-    val isExternalSensorConfig = appConfig.temperatureSensorMapping.exists(_._2.contains(trv.name))
+    val isExternalSensorConfig = appConfig.temperatureSensorMapping.exists(_._2 == trv.name)
 
     OptionT.some[Future](if (isExternalSensorConfig) {
       trv.temperatureSensorSelection match {
         case TemperatureSensorSelection.Internal =>
-          logger.error(s"trv $trv should have it's temperature_sensor_select to external")
+          logger.error(s"trv ${trv.name} should have it's temperature_sensor_select to external not Internal")
           ()
         case TemperatureSensorSelection.Remote =>
           ()
         case TemperatureSensorSelection.RemoteOffline =>
-          logger.error(s"Unexpected RemoteOffline status for $trv")
+          logger.error(s"Unexpected RemoteOffline status for ${trv.name}")
           ()
       }
-    } else ())
+    } else {
+      logger.debug(s"No sensor mapping found for ${trv.name}")
+      ()
+    })
   }
 }

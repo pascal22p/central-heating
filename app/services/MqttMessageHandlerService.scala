@@ -4,6 +4,7 @@ import javax.inject.{ Inject, Singleton }
 import play.api.libs.json.{ JsError, JsSuccess, Json, Reads }
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.{ Failure, Success, Try }
+import scala.util.control.NonFatal
 
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -25,7 +26,7 @@ class MqttMessageHandlerService @Inject() (
   private val trvTopics         = appConfig.trvDevices
   private val temperatureTopics = appConfig.temperatureDevices
 
-  def handle(topic: String, payload: String)(implicit hc: HeaderCarrier): Future[Unit] =
+  def handle(topic: String, payload: String)(implicit hc: HeaderCarrier): Future[Unit] = {
     if (trvTopics.contains(topic)) {
       (for {
         trvRaw <- OptionT.fromOption[Future](parseMqttBody[Trv](topic, payload))
@@ -45,6 +46,11 @@ class MqttMessageHandlerService @Inject() (
       logger.warn(s"Ignoring message on unexpected topic `$topic`")
       Future.unit
     }
+  }.recover {
+    case NonFatal(ex) =>
+      logger.error(ex.getMessage, ex)
+      ()
+  }
 
   private def parseMqttBody[A: Reads](topic: String, payload: String): Option[A] =
     Try(Json.parse(payload).validate[A]) match {
