@@ -181,6 +181,14 @@
                         <dd class="govuk-summary-list__value">@String.format("%.1f °C", trv.localTemperature)</dd>
                       </div>
                       <div class="govuk-summary-list__row">
+                        <dt class="govuk-summary-list__key">External sensor status</dt>
+                        <dd class="govuk-summary-list__value">@trv.temperatureSensorSelection</dd>
+                      </div>
+                      <div class="govuk-summary-list__row">
+                        <dt class="govuk-summary-list__key">External sensor temperature</dt>
+                        <dd class="govuk-summary-list__value">@String.format("%.1f °C", trv.externalTemperatureInput)</dd>
+                      </div>
+                      <div class="govuk-summary-list__row">
                         <dt class="govuk-summary-list__key">Setpoint</dt>
                         <dd
                           class="govuk-summary-list__value">@String.format("%.1f °C", trv.occupiedHeatingSetpoint)</dd>

@@ -1,5 +1,5 @@
 package models.mqtt
 
-enum TemperatureSensorSelection {
+enum TemperatureSensorSelection derives CanEqual {
   case Internal, Remote, RemoteOffline
 }

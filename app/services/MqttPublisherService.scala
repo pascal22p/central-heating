@@ -3,6 +3,8 @@ package services
 import javax.inject.{ Inject, Singleton }
 import scala.concurrent.Future
 
+import uk.gov.hmrc.http.HeaderCarrier
+
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.connectors.mqtt.*
 import org.apache.pekko.stream.connectors.mqtt.scaladsl.MqttSink
@@ -13,12 +15,13 @@ import org.apache.pekko.Done
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
 import config.AppConfig
+import models.LoggingWithRequest
 
 @Singleton
 class MqttPublisherService @Inject() (
     appConfig: AppConfig,
     actorSystem: ActorSystem
-) {
+) extends LoggingWithRequest {
 
   private given Materializer =
     Materializer(actorSystem)
@@ -55,4 +58,16 @@ class MqttPublisherService @Inject() (
         )
       )
       .runWith(sink)
+
+  def updateExternalTemperature(device: String, temperature: Double)(implicit hc: HeaderCarrier): Future[Done] = {
+    logger.info(s"Updating external temperature sensor on $device with $temperature")
+    Source
+      .single(
+        MqttMessage(
+          s"$device/set",
+          ByteString(s"""{"external_temperature_input":$temperature}""")
+        )
+      )
+      .runWith(sink)
+  }
 }

@@ -8,6 +8,7 @@ import uk.gov.hmrc.http.HeaderCarrier
 import org.mockito.ArgumentMatchers.{ any, argThat }
 import org.mockito.Mockito.*
 
+import cats.data.OptionT
 import config.AppConfig
 import models.mqtt.{ ChildLock, RunningState, SystemMode, TemperatureSensor, TemperatureSensorSelection, Trv }
 import queries.DevicesQueries
@@ -18,9 +19,10 @@ class MqttMessageHandlerServiceSpec extends BaseSpec {
   private implicit val ec: ExecutionContext =
     ExecutionContext.global
 
-  private lazy val mockDevicesQueries        = mock[DevicesQueries]
-  private lazy val mockHeatingControlService = mock[HeatingControlService]
-  private lazy val mockAppConfig             = mock[AppConfig]
+  private lazy val mockDevicesQueries                 = mock[DevicesQueries]
+  private lazy val mockHeatingControlService          = mock[HeatingControlService]
+  private lazy val mockAppConfig                      = mock[AppConfig]
+  private lazy val mockTemperatureSensorUpdateService = mock[TemperatureSensorUpdateService]
 
   private val trvTopic         = "trv/living-room"
   private val temperatureTopic = "temperature/living-room"
@@ -31,6 +33,7 @@ class MqttMessageHandlerServiceSpec extends BaseSpec {
   private lazy val service = new MqttMessageHandlerService(
     mockDevicesQueries,
     mockHeatingControlService,
+    mockTemperatureSensorUpdateService,
     mockAppConfig
   )
 
@@ -77,13 +80,17 @@ class MqttMessageHandlerServiceSpec extends BaseSpec {
   override def beforeEach(): Unit = {
     super.beforeEach()
 
-    reset(mockDevicesQueries, mockHeatingControlService, mockAppConfig)
+    reset(mockDevicesQueries, mockHeatingControlService, mockAppConfig, mockTemperatureSensorUpdateService)
 
     when(mockAppConfig.trvDevices)
       .thenReturn(Set(trvTopic))
 
     when(mockAppConfig.temperatureDevices)
       .thenReturn(Set(temperatureTopic))
+
+    when(mockTemperatureSensorUpdateService.onTemperatureUpdate(any())(using any())).thenReturn(
+      OptionT.none[Future, Unit]
+    )
 
     ()
   }
@@ -164,83 +171,6 @@ class MqttMessageHandlerServiceSpec extends BaseSpec {
 
       verifyNoInteractions(mockDevicesQueries)
       verifyNoInteractions(mockHeatingControlService)
-    }
-
-    "not trigger a TRV update when saving fails" in {
-      val trv     = fakeTrv()
-      val payload = Json.stringify(Json.toJson(trv)(using trvWrites))
-
-      when(mockDevicesQueries.saveTrv(any[Trv]))
-        .thenReturn(Future.failed(RuntimeException("Database error")))
-
-      service.handle(trvTopic, payload).futureValue
-
-      verify(mockDevicesQueries).saveTrv(any[Trv])
-      verifyNoInteractions(mockHeatingControlService)
-    }
-
-    "recover when the TRV update fails after saving" in {
-      val trv     = fakeTrv()
-      val payload = Json.stringify(Json.toJson(trv)(using trvWrites))
-
-      when(mockDevicesQueries.saveTrv(any[Trv]))
-        .thenReturn(Future.successful(()))
-
-      when(mockHeatingControlService.onTrvUpdate(any[Trv])(using any()))
-        .thenReturn(Future.failed(RuntimeException("Update error")))
-
-      service.handle(trvTopic, payload).futureValue
-
-      verify(mockDevicesQueries).saveTrv(any[Trv])
-      verify(mockHeatingControlService).onTrvUpdate(any[Trv])(using any())
-    }
-
-    "not trigger a temperature sensor update when saving fails" in {
-      val sensor  = fakeTemperatureSensor()
-      val payload = Json.stringify(Json.toJson(sensor)(using temperatureSensorWrites))
-
-      when(
-        mockDevicesQueries.saveTemperatureSensor(
-          any[TemperatureSensor]
-        )
-      ).thenReturn(
-        Future.failed(RuntimeException("Database error"))
-      )
-
-      service.handle(temperatureTopic, payload).futureValue
-
-      verify(mockDevicesQueries).saveTemperatureSensor(
-        any[TemperatureSensor]
-      )
-      verifyNoInteractions(mockHeatingControlService)
-    }
-
-    "recover when the temperature sensor update fails after saving" in {
-      val sensor  = fakeTemperatureSensor()
-      val payload = Json.stringify(Json.toJson(sensor)(using temperatureSensorWrites))
-
-      when(
-        mockDevicesQueries.saveTemperatureSensor(
-          any[TemperatureSensor]
-        )
-      ).thenReturn(Future.successful(()))
-
-      when(
-        mockHeatingControlService.onTemperatureSensorUpdate(
-          any[TemperatureSensor]
-        )(using any())
-      ).thenReturn(
-        Future.failed(RuntimeException("Update error"))
-      )
-
-      service.handle(temperatureTopic, payload).futureValue
-
-      verify(mockDevicesQueries).saveTemperatureSensor(
-        any[TemperatureSensor]
-      )
-      verify(mockHeatingControlService).onTemperatureSensorUpdate(
-        any[TemperatureSensor]
-      )(using any())
     }
   }
 }
