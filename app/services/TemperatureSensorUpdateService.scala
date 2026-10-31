@@ -22,13 +22,19 @@ class TemperatureSensorUpdateService @Inject() (
     logger.debug(s"Updating external sensor for temperature device $temperatureDevice")
     val maybeTrvDevice = appConfig.temperatureSensorMapping.get(temperatureDevice.name)
 
-    OptionT(maybeTrvDevice.traverse { trvDevice =>
-      mqttPublisherService.updateExternalTemperature(trvDevice, temperatureDevice.temperature).map(_ => ())
-    })
+    OptionT(
+      maybeTrvDevice
+        .traverse { trvDevices =>
+          trvDevices.traverse { trvDevice =>
+            mqttPublisherService.updateExternalTemperature(trvDevice, temperatureDevice.temperature)
+          }
+        }
+        .map(_ => Some(()))
+    )
   }
 
   def checkExternalSensor(trv: Trv)(implicit hc: HeaderCarrier): OptionT[Future, Unit] = {
-    val isExternalSensorConfig = appConfig.temperatureSensorMapping.exists(_._2 == trv.name)
+    val isExternalSensorConfig = appConfig.temperatureSensorMapping.exists(_._2.contains(trv.name))
 
     OptionT.some[Future](if (isExternalSensorConfig) {
       trv.temperatureSensorSelection match {
