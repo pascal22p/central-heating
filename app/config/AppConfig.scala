@@ -113,22 +113,18 @@ class AppConfig @Inject() (configuration: Configuration) {
       .split(",")
       .toSet
 
-  lazy val temperatureSensorMapping: Map[String, String] = {
-    val tuples = configuration
-      .get[String](
-        "temperature-sensor-mapping"
-      )
+  lazy val temperatureSensorMapping: Map[String, String] =
+    configuration
+      .get[String]("temperature-sensor-mapping")
       .split(",")
-
-    if (tuples.isEmpty) {
-      Map.empty
-    } else {
-      tuples.map { el =>
-        val Array(key, value) = el.split(":")
-        key -> value
-      }.toMap
-    }
-  }
+      .iterator
+      .flatMap(_.split(":", 2) match {
+        case Array(key, value) if key.nonEmpty && value.nonEmpty =>
+          Some(key.trim -> value.trim)
+        case _ =>
+          None
+      })
+      .toMap
 
   lazy val sensorControlIsEnabled: Boolean =
     configuration.get[Boolean](
