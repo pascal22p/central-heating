@@ -15,7 +15,7 @@ object LibDependencies {
     "org.apache.pekko"         %% "pekko-actor"             % play.core.PlayVersion.pekkoVersion,
     "net.sf.geographiclib"     % "GeographicLib-Java"       % "2.1",
     "io.opentelemetry.instrumentation" % "opentelemetry-instrumentation-annotations" % "2.33.1",
-    "org.apache.pekko" %% "pekko-connectors-mqtt" % "1.0.2" // Pinned to match pekko version used by Play 3.1.0
+    "org.apache.pekko" %% "pekko-connectors-mqtt" % "1.3.0" // Pinned to match pekko version used by Play 3.1.0
   )
 
   val libraryDependenciesTest: Seq[ModuleID] = Seq(
