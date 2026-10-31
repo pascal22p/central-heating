@@ -4,10 +4,10 @@ import javax.inject.{ Inject, Singleton }
 import play.api.libs.json.{ JsError, JsSuccess, Json, Reads }
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.{ Failure, Success, Try }
-import scala.util.control.NonFatal
 
 import uk.gov.hmrc.http.HeaderCarrier
 
+import cats.data.OptionT
 import config.AppConfig
 import models.mqtt.{ TemperatureSensor, Trv }
 import models.LoggingWithRequest
@@ -17,6 +17,7 @@ import queries.DevicesQueries
 class MqttMessageHandlerService @Inject() (
     devicesQueries: DevicesQueries,
     heatingControlService: HeatingControlService,
+    temperatureSensorUpdateService: TemperatureSensorUpdateService,
     appConfig: AppConfig
 )(implicit ec: ExecutionContext)
     extends LoggingWithRequest {
@@ -26,39 +27,23 @@ class MqttMessageHandlerService @Inject() (
 
   def handle(topic: String, payload: String)(implicit hc: HeaderCarrier): Future[Unit] =
     if (trvTopics.contains(topic)) {
-      handleMqttMessage[Trv](topic, payload)(
-        withName = (trv, name) => trv.copy(name = name),
-        save = devicesQueries.saveTrv,
-        onUpdate = heatingControlService.onTrvUpdate
-      )
+      (for {
+        trvRaw <- OptionT.fromOption[Future](parseMqttBody[Trv](topic, payload))
+        trv = trvRaw.copy(name = topic)
+        _ <- OptionT.liftF(devicesQueries.saveTrv(trv))
+        _ <- OptionT.liftF(heatingControlService.onTrvUpdate(trv))
+      } yield ()).getOrElse(())
     } else if (temperatureTopics.contains(topic)) {
-      handleMqttMessage[TemperatureSensor](topic, payload)(
-        withName = (sensor, name) => sensor.copy(name = name),
-        save = devicesQueries.saveTemperatureSensor,
-        onUpdate = heatingControlService.onTemperatureSensorUpdate
-      )
+      (for {
+        sensorRaw <- OptionT.fromOption[Future](parseMqttBody[TemperatureSensor](topic, payload))
+        sensor = sensorRaw.copy(name = topic)
+        _ <- OptionT.liftF(devicesQueries.saveTemperatureSensor(sensor))
+        _ <- OptionT.liftF(heatingControlService.onTemperatureSensorUpdate(sensor))
+        _ <- temperatureSensorUpdateService.onTemperatureUpdate(sensor)
+      } yield ()).getOrElse(())
     } else {
       logger.warn(s"Ignoring message on unexpected topic `$topic`")
       Future.unit
-    }
-
-  private def handleMqttMessage[A: Reads](topic: String, payload: String)(
-      withName: (A, String) => A,
-      save: A => Future[?],
-      onUpdate: A => Future[Unit]
-  ): Future[Unit] =
-    parseMqttBody[A](topic, payload).fold(Future.unit) { parsed =>
-      val device = withName(parsed, topic)
-
-      save(device)
-        .flatMap { _ =>
-          logger.debug(s"State saved for $topic: $device")
-          onUpdate(device)
-        }
-        .recover {
-          case NonFatal(error) =>
-            logger.error(s"Failed to process update for $topic", error)
-        }
     }
 
   private def parseMqttBody[A: Reads](topic: String, payload: String): Option[A] =
