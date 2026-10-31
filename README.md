@@ -8,10 +8,11 @@ The service integrates Google Nest with Zigbee2MQTT devices to automate heating 
 
 - Google Nest thermostat integration
 - Zigbee2MQTT integration for TRVs and temperature sensors
+- Remote temperature sensor to TRV synchronisation
 - Heating-demand control based on temperature sensors and TRVs
-- Manual heating control
+- Manual heating override and Homebridge virtual switch API
 - Graphite metrics
-- Web interface
+- Web interface and administration dashboard
 - MariaDB persistence
 - Configurable Nest scheduling
 - Docker images for `amd64` and `arm64`
@@ -51,7 +52,7 @@ The application listens on port `9245`.
 | `DB_URL` | MariaDB JDBC URL |
 | `DB_USER` | Database user |
 | `DB_PASSWORD` | Database password |
-| `DB_CACHE_TTL` | Database cache TTL |
+| `DB_CACHE_QUERIES_TTL` | Database queries cache TTL (minutes) |
 
 ### Nest
 
@@ -69,8 +70,9 @@ The application listens on port `9245`.
 |---|---|
 | `MQTT_IS_ENABLED` | Enables MQTT integration |
 | `MQTT_BROKER_URL` | MQTT broker URL |
-| `MQTT_TRV_DEVICES` | Configured TRV devices |
-| `MQTT_TEMPERATURE_DEVICES` | Configured temperature sensors |
+| `MQTT_TRV_DEVICES` | Configured TRV devices (comma-separated topic names) |
+| `MQTT_TEMPERATURE_DEVICES` | Configured temperature sensors (comma-separated topic names) |
+| `TEMPERATURE_SENSOR_MAPPING` | Mapping of external temperature sensor to TRV (e.g. `sensor1:trv1,sensor2:trv2`) |
 
 MQTT is disabled by default.
 
@@ -79,10 +81,10 @@ MQTT is disabled by default.
 | Variable | Description |
 |---|---|
 | `HEATING_DEMAND_IS_ENABLED` | Enables heating-demand control |
-| `HEATING_DEMAND_SENSOR_CONTROL_IS_ENABLED` | Enables sensor-based demand |
-| `HEATING_DEMAND_TRV_CONTROL_IS_ENABLED` | Enables TRV-based demand |
-| `HEATING_DEMAND_ACTIVE_TEMPERATURE` | Active target temperature |
-| `HEATING_DEMAND_STANDBY_TEMPERATURE` | Standby target temperature |
+| `HEATING_SENSOR_CONTROL_IS_ENABLED` | Enables sensor-based demand |
+| `HEATING_TRV_CONTROL_IS_ENABLED` | Enables TRV-based demand |
+| `HEATING_DEMAND_ACTIVE_TEMPERATURE_CELSIUS` | Active target temperature (°C) |
+| `HEATING_DEMAND_STANDBY_TEMPERATURE_CELSIUS` | Standby target temperature (°C) |
 | `HEATING_DEMAND_MINIMUM_ON` | Minimum heating-on period |
 | `HEATING_DEMAND_MINIMUM_OFF` | Minimum heating-off period |
 
@@ -90,10 +92,10 @@ Defaults:
 
 ```text
 HEATING_DEMAND_IS_ENABLED=false
-HEATING_DEMAND_SENSOR_CONTROL_IS_ENABLED=false
-HEATING_DEMAND_TRV_CONTROL_IS_ENABLED=false
-HEATING_DEMAND_ACTIVE_TEMPERATURE=21
-HEATING_DEMAND_STANDBY_TEMPERATURE=16
+HEATING_SENSOR_CONTROL_IS_ENABLED=false
+HEATING_TRV_CONTROL_IS_ENABLED=false
+HEATING_DEMAND_ACTIVE_TEMPERATURE_CELSIUS=21.0
+HEATING_DEMAND_STANDBY_TEMPERATURE_CELSIUS=16.0
 HEATING_DEMAND_MINIMUM_ON=10 minutes
 HEATING_DEMAND_MINIMUM_OFF=5 minutes
 ```
@@ -103,9 +105,9 @@ HEATING_DEMAND_MINIMUM_OFF=5 minutes
 | Variable | Description |
 |---|---|
 | `NEST_SCHEDULER_IS_ENABLED` | Enables the Nest scheduler |
-| `NEST_SCHEDULER_START_DELAY` | Initial scheduler delay |
-| `NEST_SCHEDULER_INTERVAL` | Scheduler interval |
-| `NEST_SCHEDULER_TIMEOUT` | Scheduler operation timeout |
+| `NEST_SCHEDULER_START_DELAY_IN_SECONDS` | Initial scheduler delay (seconds) |
+| `NEST_SCHEDULER_INTERVAL_IN_SECONDS` | Scheduler interval (seconds) |
+| `NEST_SCHEDULER_TIMEOUT_IN_SECONDS` | Scheduler operation timeout (seconds) |
 
 ### Graphite
 
@@ -145,16 +147,6 @@ The build produces multi-platform images for:
 Release images use `v<version>` and `latest` tags.
 
 Snapshot images use `v<version>-snapshot-<shortsha>` and `latest-snapshot`.
-
-## Project layout
-
-```text
-app/                         Application code
-conf/                        Play configuration and routes
-project/                     sbt configuration and dependencies
-test/                        Tests
-build.sbt                    Build definition
-```
 
 ## License
 
