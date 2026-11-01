@@ -17,7 +17,7 @@ import queries.DevicesQueries
 class MqttMessageHandlerService @Inject() (
     devicesQueries: DevicesQueries,
     heatingControlService: HeatingControlService,
-    temperatureSensorUpdateService: TemperatureSensorUpdateService,
+    mqttActionsService: MqttActionsService,
     appConfig: AppConfig
 )(implicit ec: ExecutionContext)
     extends LoggingWithRequest {
@@ -31,7 +31,10 @@ class MqttMessageHandlerService @Inject() (
         for {
           _ <- devicesQueries.saveTrv(trv)
           _ <- heatingControlService.onTrvUpdate(trv)
-          _ <- Future.successful(temperatureSensorUpdateService.checkExternalSensor(trv))
+          _ <- Future.successful(mqttActionsService.checkExternalSensor(trv))
+          // There is seem to be a bug on one trv where the system mode and temperature sensor selection are not being kept.
+          _ <- mqttActionsService.enforceSystemMode(trv)
+          _ <- mqttActionsService.enforceRemoteSensor(trv)
         } yield ()
       }
     } else if (temperatureTopics.contains(topic)) {
@@ -39,7 +42,7 @@ class MqttMessageHandlerService @Inject() (
         for {
           _ <- devicesQueries.saveTemperatureSensor(sensor)
           _ <- heatingControlService.onTemperatureSensorUpdate(sensor)
-          _ <- temperatureSensorUpdateService.onTemperatureUpdate(sensor)
+          _ <- mqttActionsService.updateExternalSensor(sensor)
         } yield ()
       }
     } else {

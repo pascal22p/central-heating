@@ -1,6 +1,6 @@
 package services
 
-import java.util.UUID
+import java.util.{ Locale, UUID }
 import javax.inject.{ Inject, Singleton }
 import play.api.inject.ApplicationLifecycle
 import scala.concurrent.{ ExecutionContext, Future }
@@ -11,7 +11,7 @@ import uk.gov.hmrc.http.HeaderCarrier
 
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.{ Materializer, OverflowStrategy, QueueOfferResult, RestartSettings, SystemMaterializer }
-import org.apache.pekko.stream.connectors.mqtt._
+import org.apache.pekko.stream.connectors.mqtt.*
 import org.apache.pekko.stream.connectors.mqtt.scaladsl.MqttSink
 import org.apache.pekko.stream.scaladsl.{ Keep, RestartSink, Source }
 import org.apache.pekko.util.ByteString
@@ -19,6 +19,7 @@ import org.apache.pekko.Done
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
 import config.AppConfig
+import models.mqtt.{ SystemMode, TemperatureSensorSelection }
 import models.LoggingWithRequest
 
 @Singleton
@@ -123,6 +124,42 @@ class MqttPublisherService @Inject() (
       MqttMessage(
         s"$device/set",
         ByteString(s"""{"external_temperature_input":$temperature}""")
+      )
+    )
+  }
+
+  @SuppressWarnings(Array("org.wartremover.warts.ToString"))
+  def updateSystemMode(
+      device: String,
+      systemMode: SystemMode
+  )(implicit hc: HeaderCarrier): Future[Done] = {
+    logger.info(
+      s"Updating system mode on $device with $systemMode"
+    )
+
+    publish(
+      MqttMessage(
+        s"$device/set",
+        ByteString(s"""{"system_mode":"${systemMode.toString.toLowerCase(Locale.ENGLISH)}"}""")
+      )
+    )
+  }
+
+  @SuppressWarnings(Array("org.wartremover.warts.ToString"))
+  def updateTemperatureSensorSelection(
+      device: String,
+      temperatureSensorSelection: TemperatureSensorSelection
+  )(implicit hc: HeaderCarrier): Future[Done] = {
+    logger.info(
+      s"Updating temperature sensor selection on $device with $temperatureSensorSelection"
+    )
+
+    publish(
+      MqttMessage(
+        s"$device/set",
+        ByteString(
+          s"""{"temperature_sensor_select":"${temperatureSensorSelection.toString.toLowerCase(Locale.ENGLISH)}"}"""
+        )
       )
     )
   }
