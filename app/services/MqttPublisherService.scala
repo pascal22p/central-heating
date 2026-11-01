@@ -145,7 +145,6 @@ class MqttPublisherService @Inject() (
     )
   }
 
-  @SuppressWarnings(Array("org.wartremover.warts.ToString"))
   def updateTemperatureSensorSelection(
       device: String,
       temperatureSensorSelection: String
@@ -158,7 +157,7 @@ class MqttPublisherService @Inject() (
       MqttMessage(
         s"$device/set",
         ByteString(
-          s"""{"temperature_sensor_select":"${temperatureSensorSelection.toString.toLowerCase(Locale.ENGLISH)}"}"""
+          s"""{"temperature_sensor_select":"${temperatureSensorSelection.toLowerCase(Locale.ENGLISH)}"}"""
         )
       )
     )
