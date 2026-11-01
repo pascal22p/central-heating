@@ -15,11 +15,11 @@ object TemperatureSensor {
     Json.format[TemperatureSensor]
 
   given Reads[TemperatureSensor] =
-    (JsPath \ "temperature")
-      .read[Double]
+    (JsPath \ "name")
+      .read[String]
+      .and((JsPath \ "temperature").read[Double])
       .and((JsPath \ "humidity").read[Double])
-      .and((JsPath \ "battery").read[Double])((temperature, humidity, battery) =>
-        TemperatureSensor("", temperature, humidity, battery)
+      .and((JsPath \ "battery").read[Double])((name, temperature, humidity, battery) =>
+        TemperatureSensor(name, temperature, humidity, battery)
       )
-
 }

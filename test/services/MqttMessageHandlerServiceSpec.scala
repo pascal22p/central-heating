@@ -8,7 +8,6 @@ import uk.gov.hmrc.http.HeaderCarrier
 import org.mockito.ArgumentMatchers.{ any, argThat }
 import org.mockito.Mockito.*
 
-import cats.data.OptionT
 import config.AppConfig
 import models.mqtt.{ ChildLock, RunningState, SystemMode, TemperatureSensor, TemperatureSensorSelection, Trv }
 import queries.DevicesQueries
@@ -89,7 +88,7 @@ class MqttMessageHandlerServiceSpec extends BaseSpec {
       .thenReturn(Set(temperatureTopic))
 
     when(mockTemperatureSensorUpdateService.onTemperatureUpdate(any())(using any())).thenReturn(
-      OptionT.none[Future, Unit]
+      Future.unit
     )
 
     ()
