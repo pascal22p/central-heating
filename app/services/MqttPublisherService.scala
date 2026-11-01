@@ -19,7 +19,7 @@ import org.apache.pekko.Done
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
 import config.AppConfig
-import models.mqtt.{ SystemMode, TemperatureSensorSelection }
+import models.mqtt.SystemMode
 import models.LoggingWithRequest
 
 @Singleton
