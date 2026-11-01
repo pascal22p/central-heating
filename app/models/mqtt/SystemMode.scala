@@ -1,5 +1,5 @@
 package models.mqtt
 
 enum SystemMode {
-  case Heat, Auto
+  case Heat, Auto, Off
 }
