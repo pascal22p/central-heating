@@ -140,7 +140,7 @@ class MqttPublisherService @Inject() (
     publish(
       MqttMessage(
         s"$device/set",
-        ByteString(s"""{"system_mode":${systemMode.toString.toLowerCase(Locale.ENGLISH)}""")
+        ByteString(s"""{"system_mode":"${systemMode.toString.toLowerCase(Locale.ENGLISH)}"}""")
       )
     )
   }
@@ -158,7 +158,7 @@ class MqttPublisherService @Inject() (
       MqttMessage(
         s"$device/set",
         ByteString(
-          s"""{"temperature_sensor_select":${temperatureSensorSelection.toString.toLowerCase(Locale.ENGLISH)}"""
+          s"""{"temperature_sensor_select":"${temperatureSensorSelection.toString.toLowerCase(Locale.ENGLISH)}"}"""
         )
       )
     )
