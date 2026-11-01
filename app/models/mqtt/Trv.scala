@@ -34,7 +34,10 @@ object Trv {
 
   given Reads[Trv] =
     Reads { json =>
-      for
+      for {
+        name <-
+          (json \ "name").validate[String]
+
         battery <-
           (json \ "battery").validateOpt[Int]
 
@@ -81,9 +84,8 @@ object Trv {
         smartTemperatureControl <-
           (json \ "smart_temperature_control")
             .validate[String]
-
-      yield Trv(
-        name = "",
+      } yield Trv(
+        name = name,
         battery = battery,
         externalTemperatureInput = externalTemperatureInput,
         heatPercentageHour = heatPercentageHour,

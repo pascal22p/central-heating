@@ -5,7 +5,6 @@ import scala.concurrent.{ ExecutionContext, Future }
 
 import uk.gov.hmrc.http.HeaderCarrier
 
-import cats.data.OptionT
 import cats.implicits.*
 import config.AppConfig
 import models.mqtt.{ TemperatureSensor, TemperatureSensorSelection, Trv }
@@ -18,38 +17,31 @@ class TemperatureSensorUpdateService @Inject() (
 )(implicit ec: ExecutionContext)
     extends LoggingWithRequest {
 
-  def onTemperatureUpdate(temperatureDevice: TemperatureSensor)(implicit hc: HeaderCarrier): OptionT[Future, Unit] = {
-    logger.debug(s"Updating external sensor for temperature device $temperatureDevice")
-    val maybeTrvDevice = appConfig.temperatureSensorMapping.get(temperatureDevice.name)
+  def onTemperatureUpdate(temperatureDevice: TemperatureSensor)(implicit hc: HeaderCarrier): Future[Unit] = {
+    val trvDevices = appConfig.temperatureSensorMapping.getOrElse(temperatureDevice.name, List.empty)
 
-    OptionT(
-      maybeTrvDevice
-        .traverse { trvDevices =>
-          trvDevices.traverse { trvDevice =>
-            mqttPublisherService.updateExternalTemperature(trvDevice, temperatureDevice.temperature)
-          }
-        }
-        .map(_ => Some(()))
-    )
+    trvDevices
+      .traverse { trvDevice =>
+        logger.debug(s"Updating external sensor for temperature device ${temperatureDevice.name} in trv $trvDevice")
+        mqttPublisherService.updateExternalTemperature(trvDevice, temperatureDevice.temperature)
+      }
+      .map(_ => ())
   }
 
-  def checkExternalSensor(trv: Trv)(implicit hc: HeaderCarrier): OptionT[Future, Unit] = {
+  def checkExternalSensor(trv: Trv)(implicit hc: HeaderCarrier): Unit = {
     val isExternalSensorConfig = appConfig.temperatureSensorMapping.exists(_._2.contains(trv.name))
 
-    OptionT.some[Future](if (isExternalSensorConfig) {
+    if (isExternalSensorConfig) {
       trv.temperatureSensorSelection match {
         case TemperatureSensorSelection.Internal =>
           logger.error(s"trv ${trv.name} should have it's temperature_sensor_select to external not Internal")
-          ()
         case TemperatureSensorSelection.Remote =>
-          ()
+          logger.debug(s"temperature sensor is external for ${trv.name}")
         case TemperatureSensorSelection.RemoteOffline =>
           logger.error(s"Unexpected RemoteOffline status for ${trv.name}")
-          ()
       }
     } else {
       logger.debug(s"No sensor mapping found for ${trv.name}")
-      ()
-    })
+    }
   }
 }
