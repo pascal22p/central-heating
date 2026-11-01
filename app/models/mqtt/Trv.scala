@@ -105,6 +105,7 @@ object Trv {
         systemMode = systemModeValue match {
           case "heat" => SystemMode.Heat
           case "auto" => SystemMode.Auto
+          case "off"  => SystemMode.Off
           case value  =>
             throw new IllegalArgumentException(
               s"Unknown system_mode: $value"

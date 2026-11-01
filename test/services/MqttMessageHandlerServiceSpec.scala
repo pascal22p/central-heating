@@ -61,6 +61,7 @@ class MqttMessageHandlerServiceSpec extends BaseSpec {
       "system_mode" -> (trv.systemMode match {
         case SystemMode.Heat => "heat"
         case SystemMode.Auto => "auto"
+        case SystemMode.Off  => "off"
       }),
       "temperature_sensor_select" -> (trv.temperatureSensorSelection match {
         case TemperatureSensorSelection.Internal      => "internal"
