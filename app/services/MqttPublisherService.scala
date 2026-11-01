@@ -19,7 +19,7 @@ import org.apache.pekko.Done
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
 import config.AppConfig
-import models.mqtt.{ SystemMode, TemperatureSensorSelection }
+import models.mqtt.SystemMode
 import models.LoggingWithRequest
 
 @Singleton
@@ -145,10 +145,9 @@ class MqttPublisherService @Inject() (
     )
   }
 
-  @SuppressWarnings(Array("org.wartremover.warts.ToString"))
   def updateTemperatureSensorSelection(
       device: String,
-      temperatureSensorSelection: TemperatureSensorSelection
+      temperatureSensorSelection: String
   )(implicit hc: HeaderCarrier): Future[Done] = {
     logger.info(
       s"Updating temperature sensor selection on $device with $temperatureSensorSelection"
@@ -158,7 +157,7 @@ class MqttPublisherService @Inject() (
       MqttMessage(
         s"$device/set",
         ByteString(
-          s"""{"temperature_sensor_select":"${temperatureSensorSelection.toString.toLowerCase(Locale.ENGLISH)}"}"""
+          s"""{"temperature_sensor_select":"${temperatureSensorSelection.toLowerCase(Locale.ENGLISH)}"}"""
         )
       )
     )
