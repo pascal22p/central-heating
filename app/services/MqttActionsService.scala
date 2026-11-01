@@ -29,10 +29,10 @@ class MqttActionsService @Inject() (
 
   def enforceRemoteSensor(trv: Trv)(implicit hc: HeaderCarrier): Future[Unit] = {
     if (trv.temperatureSensorSelection == TemperatureSensorSelection.Internal) {
-      Future.unit
-    } else {
       logger.info(s"${trv.name} temperature sensor selection is ${trv.temperatureSensorSelection}, enforcing Remote")
       mqttPublisherService.updateTemperatureSensorSelection(trv.name, "remote_temperature").map(_ => ())
+    } else {
+      Future.unit
     }
   }
 
