@@ -21,7 +21,7 @@ class MqttMessageHandlerServiceSpec extends BaseSpec {
   private lazy val mockDevicesQueries                 = mock[DevicesQueries]
   private lazy val mockHeatingControlService          = mock[HeatingControlService]
   private lazy val mockAppConfig                      = mock[AppConfig]
-  private lazy val mockTemperatureSensorUpdateService = mock[TemperatureSensorUpdateService]
+  private lazy val mockTemperatureSensorUpdateService = mock[MqttActionsService]
 
   private val trvTopic         = "trv/living-room"
   private val temperatureTopic = "temperature/living-room"
@@ -88,7 +88,7 @@ class MqttMessageHandlerServiceSpec extends BaseSpec {
     when(mockAppConfig.temperatureDevices)
       .thenReturn(Set(temperatureTopic))
 
-    when(mockTemperatureSensorUpdateService.onTemperatureUpdate(any())(using any())).thenReturn(
+    when(mockTemperatureSensorUpdateService.updateExternalSensor(any())(using any())).thenReturn(
       Future.unit
     )
 

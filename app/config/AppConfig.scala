@@ -5,6 +5,8 @@ import play.api.Configuration
 import scala.annotation.unused
 import scala.concurrent.duration.FiniteDuration
 
+import models.mqtt.SystemMode
+
 class AppConfig @Inject() (configuration: Configuration) {
   @unused
   private def baseUrl(serviceName: String): String = {
@@ -104,6 +106,14 @@ class AppConfig @Inject() (configuration: Configuration) {
       )
       .split(",")
       .toSet
+
+  @SuppressWarnings(Array("org.wartremover.warts.EnumValueOf"))
+  lazy val trvSystemMode: SystemMode =
+    SystemMode.valueOf(
+      configuration.get[String](
+        "microservice.services.mqtt.trv-heating-mode"
+      )
+    )
 
   lazy val temperatureDevices: Set[String] =
     configuration

@@ -11,13 +11,32 @@ import models.mqtt.{ TemperatureSensor, TemperatureSensorSelection, Trv }
 import models.LoggingWithRequest
 
 @Singleton
-class TemperatureSensorUpdateService @Inject() (
+class MqttActionsService @Inject() (
     appConfig: AppConfig,
     mqttPublisherService: MqttPublisherService
 )(implicit ec: ExecutionContext)
     extends LoggingWithRequest {
 
-  def onTemperatureUpdate(temperatureDevice: TemperatureSensor)(implicit hc: HeaderCarrier): Future[Unit] = {
+  def enforceSystemMode(trv: Trv)(implicit hc: HeaderCarrier): Future[Unit] = {
+    val systemModeConfig = appConfig.trvSystemMode
+    if (trv.systemMode == systemModeConfig) {
+      Future.unit
+    } else {
+      logger.info(s"${trv.name} system mode is ${trv.systemMode}, enforcing $systemModeConfig")
+      mqttPublisherService.updateSystemMode(trv.name, systemModeConfig).map(_ => ())
+    }
+  }
+
+  def enforceRemoteSensor(trv: Trv)(implicit hc: HeaderCarrier): Future[Unit] = {
+    if (trv.temperatureSensorSelection == TemperatureSensorSelection.Internal) {
+      Future.unit
+    } else {
+      logger.info(s"${trv.name} temperature sensor selection is ${trv.temperatureSensorSelection}, enforcing Remote")
+      mqttPublisherService.updateTemperatureSensorSelection(trv.name, TemperatureSensorSelection.Internal).map(_ => ())
+    }
+  }
+
+  def updateExternalSensor(temperatureDevice: TemperatureSensor)(implicit hc: HeaderCarrier): Future[Unit] = {
     val trvDevices = appConfig.temperatureSensorMapping.getOrElse(temperatureDevice.name, List.empty)
 
     trvDevices

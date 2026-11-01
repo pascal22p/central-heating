@@ -1,5 +1,5 @@
 package models.mqtt
 
-enum SystemMode {
+enum SystemMode derives CanEqual {
   case Heat, Auto, Off
 }
