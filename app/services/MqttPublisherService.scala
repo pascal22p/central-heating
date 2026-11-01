@@ -148,7 +148,7 @@ class MqttPublisherService @Inject() (
   @SuppressWarnings(Array("org.wartremover.warts.ToString"))
   def updateTemperatureSensorSelection(
       device: String,
-      temperatureSensorSelection: TemperatureSensorSelection
+      temperatureSensorSelection: String
   )(implicit hc: HeaderCarrier): Future[Done] = {
     logger.info(
       s"Updating temperature sensor selection on $device with $temperatureSensorSelection"
