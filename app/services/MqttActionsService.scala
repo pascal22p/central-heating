@@ -32,7 +32,7 @@ class MqttActionsService @Inject() (
       Future.unit
     } else {
       logger.info(s"${trv.name} temperature sensor selection is ${trv.temperatureSensorSelection}, enforcing Remote")
-      mqttPublisherService.updateTemperatureSensorSelection(trv.name, TemperatureSensorSelection.Internal).map(_ => ())
+      mqttPublisherService.updateTemperatureSensorSelection(trv.name, TemperatureSensorSelection.Remote).map(_ => ())
     }
   }
 
