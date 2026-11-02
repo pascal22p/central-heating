@@ -9,6 +9,7 @@ import uk.gov.hmrc.http.{ HeaderCarrier, HttpResponse, StringContextOps, Upstrea
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.HttpReads.Implicits.*
 
+import com.google.common.util.concurrent.RateLimiter
 import com.google.inject.name.Named
 import com.google.inject.Inject
 
@@ -68,22 +69,30 @@ class DefaultNestConnector @Inject() (
     extends NestConnector
     with LoggingWithRequest {
 
-  def getDevice()(implicit hc: HeaderCarrier): EitherT[Future, UpstreamErrorResponse, NestDevice] = {
-    nestConnectorOAuth.getValidToken().flatMap { accessToken =>
-      val path = s"/v1/enterprises/${appConfig.nestProjectId}/devices/${appConfig.nestDeviceId}"
-      val url  = s"${appConfig.nestApiHost}$path"
+  private val temperatureRateLimiter = RateLimiter.create(appConfig.nestRateLimit)
 
-      EitherT(
-        http
-          .get(url"$url")
-          .setHeader(
-            "Authorization" -> s"Bearer $accessToken"
-          )
-          .execute[Either[UpstreamErrorResponse, HttpResponse]]
-      )
-        .map { response =>
-          response.json.as[NestDevice]
-        }
+  def getDevice()(implicit hc: HeaderCarrier): EitherT[Future, UpstreamErrorResponse, NestDevice] = {
+    if (temperatureRateLimiter.tryAcquire()) {
+      nestConnectorOAuth.getValidToken().flatMap { accessToken =>
+        val path = s"/v1/enterprises/${appConfig.nestProjectId}/devices/${appConfig.nestDeviceId}"
+        val url  = s"${appConfig.nestApiHost}$path"
+
+        EitherT(
+          http
+            .get(url"$url")
+            .setHeader(
+              "Authorization" -> s"Bearer $accessToken"
+            )
+            .execute[Either[UpstreamErrorResponse, HttpResponse]]
+        )
+          .map { response =>
+            response.json.as[NestDevice]
+          }
+      }
+    } else {
+      logger.warn("Rate limit exceeded for getDevice, skipping request")
+      val errorResponse = UpstreamErrorResponse("Rate limit exceeded for getDevice, skipping request", 429, 429)
+      EitherT.leftT[Future, NestDevice](errorResponse)
     }
   }
 
@@ -91,31 +100,36 @@ class DefaultNestConnector @Inject() (
       temperatureCelsius: Double
   )(implicit hc: HeaderCarrier): EitherT[Future, UpstreamErrorResponse, Unit] = {
 
-    nestConnectorOAuth.getValidToken().flatMap { accessToken =>
-      val path =
-        s"/v1/enterprises/${appConfig.nestProjectId}/devices/${appConfig.nestDeviceId}:executeCommand"
+    if (temperatureRateLimiter.tryAcquire()) {
+      nestConnectorOAuth.getValidToken().flatMap { accessToken =>
+        val path =
+          s"/v1/enterprises/${appConfig.nestProjectId}/devices/${appConfig.nestDeviceId}:executeCommand"
 
-      val url =
-        s"${appConfig.nestApiHost}$path"
+        val url =
+          s"${appConfig.nestApiHost}$path"
 
-      val body = Json.obj(
-        "command" -> "sdm.devices.commands.ThermostatTemperatureSetpoint.SetHeat",
-        "params"  -> Json.obj(
-          "heatCelsius" -> temperatureCelsius
-        )
-      )
-
-      EitherT(
-        http
-          .post(url"$url")
-          .setHeader(
-            "Authorization" -> s"Bearer $accessToken"
+        val body = Json.obj(
+          "command" -> "sdm.devices.commands.ThermostatTemperatureSetpoint.SetHeat",
+          "params"  -> Json.obj(
+            "heatCelsius" -> temperatureCelsius
           )
-          .withBody(body)
-          .execute[Either[UpstreamErrorResponse, HttpResponse]]
-      ).map { _ =>
-        ()
+        )
+
+        EitherT(
+          http
+            .post(url"$url")
+            .setHeader(
+              "Authorization" -> s"Bearer $accessToken"
+            )
+            .withBody(body)
+            .execute[Either[UpstreamErrorResponse, HttpResponse]]
+        ).map { _ =>
+          ()
+        }
       }
+    } else {
+      logger.warn("Rate limit exceeded for setTemperature, skipping request")
+      EitherT.rightT[Future, UpstreamErrorResponse](())
     }
   }
 
@@ -123,31 +137,36 @@ class DefaultNestConnector @Inject() (
       implicit hc: HeaderCarrier
   ): EitherT[Future, UpstreamErrorResponse, Unit] = {
 
-    nestConnectorOAuth.getValidToken().flatMap { accessToken =>
-      val path =
-        s"/v1/enterprises/${appConfig.nestProjectId}/devices/${appConfig.nestDeviceId}:executeCommand"
+    if (temperatureRateLimiter.tryAcquire()) {
+      nestConnectorOAuth.getValidToken().flatMap { accessToken =>
+        val path =
+          s"/v1/enterprises/${appConfig.nestProjectId}/devices/${appConfig.nestDeviceId}:executeCommand"
 
-      val url =
-        s"${appConfig.nestApiHost}$path"
+        val url =
+          s"${appConfig.nestApiHost}$path"
 
-      val body = Json.obj(
-        "command" -> "sdm.devices.commands.ThermostatMode.SetMode",
-        "params"  -> Json.obj(
-          "mode" -> "HEAT"
-        )
-      )
-
-      EitherT(
-        http
-          .post(url"$url")
-          .setHeader(
-            "Authorization" -> s"Bearer $accessToken"
+        val body = Json.obj(
+          "command" -> "sdm.devices.commands.ThermostatMode.SetMode",
+          "params"  -> Json.obj(
+            "mode" -> "HEAT"
           )
-          .withBody(body)
-          .execute[Either[UpstreamErrorResponse, HttpResponse]]
-      ).map { _ =>
-        ()
+        )
+
+        EitherT(
+          http
+            .post(url"$url")
+            .setHeader(
+              "Authorization" -> s"Bearer $accessToken"
+            )
+            .withBody(body)
+            .execute[Either[UpstreamErrorResponse, HttpResponse]]
+        ).map { _ =>
+          ()
+        }
       }
+    } else {
+      logger.warn("Rate limit exceeded for setHeatingMode, skipping request")
+      EitherT.rightT[Future, UpstreamErrorResponse](())
     }
   }
 

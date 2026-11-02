@@ -52,6 +52,9 @@ class NestConnectorSpec extends BaseSpec with WireMockHelper with ScalaFutures {
     when(mockAppConfig.nestDeviceId)
       .thenReturn("test-device-id")
 
+    when(mockAppConfig.nestRateLimit)
+      .thenReturn(100.0)
+
     when(mockAppConfig.nestRedirectUri)
       .thenReturn("http://localhost:9234/nest/oauth/callback")
 

@@ -44,6 +44,9 @@ class AppConfig @Inject() (configuration: Configuration) {
   lazy val nestApiHost: String =
     configuration.get[String]("microservice.services.nest.api-host")
 
+  lazy val nestRateLimit: Double =
+    configuration.get[Double]("microservice.services.nest.rate-limit")
+
   lazy val googleTokenHost: String =
     configuration.get[String]("microservice.services.nest.google-token-host")
 
@@ -77,11 +80,6 @@ class AppConfig @Inject() (configuration: Configuration) {
   lazy val mqttClientId: String =
     configuration.get[String](
       "microservice.services.mqtt.client-id"
-    )
-
-  lazy val nestSchedulerIsEnabled: Boolean =
-    configuration.get[Boolean](
-      "scheduler.nest.isEnabled"
     )
 
   lazy val nestSchedulerStartDelayInSeconds: Int =
