@@ -53,11 +53,11 @@ class MqttActionsService @Inject() (
     if (isExternalSensorConfig) {
       trv.temperatureSensorSelection match {
         case TemperatureSensorSelection.Internal =>
-          logger.error(s"trv ${trv.name} should have it's temperature_sensor_select to external not Internal")
+          logger.warn(s"trv ${trv.name} should have it's temperature_sensor_select to external not Internal")
         case TemperatureSensorSelection.Remote =>
           logger.debug(s"temperature sensor is external for ${trv.name}")
         case TemperatureSensorSelection.RemoteOffline =>
-          logger.error(s"Unexpected RemoteOffline status for ${trv.name}")
+          logger.warn(s"Unexpected RemoteOffline status for ${trv.name}")
       }
     } else {
       logger.debug(s"No sensor mapping found for ${trv.name}")
