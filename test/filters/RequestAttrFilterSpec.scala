@@ -143,7 +143,7 @@ class RequestAttrFilterSpec extends BaseSpec {
         sut.apply(next)(request).futureValue
 
       result.header.headers.get(HeaderNames.xRequestId) mustBe Some(existingRequestId)
-      result.header.headers.get(HeaderNames.xSessionId) mustBe Some(existingSessionId)
+      result.header.headers.get(HeaderNames.xSessionId) mustBe None
     }
 
     "replace existing request ID and session ID response headers" in {
@@ -168,7 +168,7 @@ class RequestAttrFilterSpec extends BaseSpec {
         sut.apply(next)(request).futureValue
 
       result.header.headers.get(HeaderNames.xRequestId) mustBe Some(existingRequestId)
-      result.header.headers.get(HeaderNames.xSessionId) mustBe Some(existingSessionId)
+      result.header.headers.get(HeaderNames.xSessionId) mustBe None
     }
 
     "throw an IllegalStateException when the session ID is missing" in {

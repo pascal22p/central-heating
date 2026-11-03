@@ -50,15 +50,16 @@ class RequestAttrFilter @Inject() (
 
     next(enrichedRequest)
       .map { result =>
-        result.withHeaders(
-          result.header.headers
-            .filterNot(_._1.equalsIgnoreCase(HeaderNames.xRequestId))
-            .filterNot(_._1.equalsIgnoreCase(HeaderNames.xSessionId))
-            .toSeq ++ Seq(
-            HeaderNames.xRequestId -> requestId,
-            HeaderNames.xSessionId -> sessionId
-          )*
-        )
+        result
+          .withHeaders(
+            result.header.headers
+              .filterNot(_._1.equalsIgnoreCase(HeaderNames.xRequestId))
+              .filterNot(_._1.equalsIgnoreCase(HeaderNames.xSessionId))
+              .toSeq ++ Seq(
+              HeaderNames.xRequestId -> requestId
+            )*
+          )
+          .discardingHeader(HeaderNames.xSessionId)
       }
       .recoverWith {
         case NonFatal(e) =>
