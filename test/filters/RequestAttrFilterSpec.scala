@@ -4,11 +4,12 @@ import java.util.UUID
 import play.api.mvc.*
 import play.api.test.FakeRequest
 import play.api.test.Helpers.*
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ ExecutionContext, Future }
 
 import uk.gov.hmrc.http.HeaderNames
 
 import org.apache.pekko.stream.Materializer
+import org.mockito.ArgumentMatchers.{ any, eq => eqTo }
 import org.mockito.Mockito
 
 import config.ErrorHandler
@@ -180,6 +181,91 @@ class RequestAttrFilterSpec extends BaseSpec {
       intercept[IllegalStateException] {
         sut.apply(next)(request)
       }.getMessage mustBe "Session ID missing from request"
+    }
+
+    "update the incoming request headers with the request ID and session ID" in {
+      var capturedRequest: Option[RequestHeader] = None
+
+      val oldRequestId = "old-request-id"
+      val oldSessionId = "old-session-id"
+
+      val next: RequestHeader => Future[Result] =
+        request => {
+          capturedRequest = Some(request)
+          Future.successful(Results.Ok)
+        }
+
+      val request =
+        FakeRequest(GET, "/")
+          .withHeaders(
+            HeaderNames.xRequestId -> oldRequestId,
+            HeaderNames.xSessionId -> oldSessionId
+          )
+          .withSession("sessionId" -> existingSessionId)
+
+      sut.apply(next)(request).futureValue
+
+      val enrichedRequest =
+        capturedRequest.getOrElse(
+          fail("Expected enriched request to be passed downstream")
+        )
+
+      enrichedRequest.headers.get(HeaderNames.xRequestId) mustBe Some(oldRequestId)
+      enrichedRequest.headers.get(HeaderNames.xSessionId) mustBe Some(existingSessionId)
+
+      enrichedRequest.headers.headers.count(
+        _._1.equalsIgnoreCase(HeaderNames.xRequestId)
+      ) mustBe 1
+
+      enrichedRequest.headers.headers.count(
+        _._1.equalsIgnoreCase(HeaderNames.xSessionId)
+      ) mustBe 1
+    }
+
+    "delegate non-fatal exceptions to the error handler with the enriched request" in {
+      val exception = new RuntimeException("boom")
+
+      val request =
+        FakeRequest(GET, "/")
+          .withHeaders(HeaderNames.xRequestId -> existingRequestId)
+          .withSession("sessionId" -> existingSessionId)
+
+      val next: RequestHeader => Future[Result] =
+        _ => Future.failed(exception)
+
+      Mockito.reset(errorHandler)
+
+      Mockito
+        .when(
+          errorHandler.onServerError(
+            any[RequestHeader](),
+            any[Throwable]()
+          )
+        )
+        .thenReturn(Future.successful(Results.InternalServerError))
+
+      val result =
+        sut.apply(next)(request).futureValue
+
+      status(Future.successful(result)) mustBe INTERNAL_SERVER_ERROR
+
+      val requestCaptor =
+        org.mockito.ArgumentCaptor.forClass(classOf[RequestHeader])
+
+      Mockito
+        .verify(errorHandler)
+        .onServerError(
+          requestCaptor.capture(),
+          eqTo(exception)
+        )
+
+      val enrichedRequest = requestCaptor.getValue
+
+      enrichedRequest.attrs.get(Attrs.RequestId) mustBe Some(existingRequestId)
+      enrichedRequest.attrs.get(Attrs.SessionId) mustBe Some(existingSessionId)
+
+      enrichedRequest.headers.get(HeaderNames.xRequestId) mustBe Some(existingRequestId)
+      enrichedRequest.headers.get(HeaderNames.xSessionId) mustBe Some(existingSessionId)
     }
   }
 }
