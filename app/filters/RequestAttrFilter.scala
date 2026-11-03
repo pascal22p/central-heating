@@ -7,6 +7,8 @@ import play.api.Logging
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.control.NonFatal
 
+import uk.gov.hmrc.http.HeaderNames
+
 import org.apache.pekko.stream.Materializer
 
 import config.ErrorHandler
@@ -19,10 +21,8 @@ class RequestAttrFilter @Inject() (
     extends Filter
     with Logging {
 
-  private val headerName = "X-Request-Id"
-
   override def apply(next: RequestHeader => Future[Result])(request: RequestHeader): Future[Result] = {
-    val requestId = request.headers.get(headerName).getOrElse(UUID.randomUUID().toString)
+    val requestId = request.headers.get(HeaderNames.xRequestId).getOrElse(UUID.randomUUID().toString)
 
     val sessionId =
       request.attrs
@@ -32,25 +32,38 @@ class RequestAttrFilter @Inject() (
           throw new IllegalStateException("Session ID missing from request")
         }
 
-    // Attach requestId into attrs (server-side context)
+    // Attach requestId and sessionId to request attributes
     val enrichedRequest = request
       .addAttr(Attrs.RequestId, requestId)
       .addAttr(Attrs.SessionId, sessionId)
+      .withHeaders(
+        request.headers
+          .remove(HeaderNames.xRequestId)
+          .add(HeaderNames.xRequestId -> requestId)
+          .remove(HeaderNames.xSessionId)
+          .add(HeaderNames.xSessionId -> sessionId)
+      )
 
     logger.info(
       s"RequestAttrFilter assigned sessionId=`$sessionId` requestId=`$requestId` to ${request.method} ${request.uri}"
     )
 
-    // Also put it on the response headers (optional, useful for clients/debugging)
     next(enrichedRequest)
-      .map { req =>
-        val newHeaders = (req.header.headers - headerName) + (headerName -> requestId)
-        req.withHeaders(newHeaders.toSeq*)
+      .map { result =>
+        result
+          .withHeaders(
+            result.header.headers
+              .filterNot(_._1.equalsIgnoreCase(HeaderNames.xRequestId))
+              .filterNot(_._1.equalsIgnoreCase(HeaderNames.xSessionId))
+              .toSeq ++ Seq(
+              HeaderNames.xRequestId -> requestId
+            )*
+          )
+          .discardingHeader(HeaderNames.xSessionId)
       }
       .recoverWith {
-        // workaround so that the new attributes are available in the error handler
-        // from https://github.com/playframework/playframework/issues/7968
-        case NonFatal(e) => errorHandler.onServerError(enrichedRequest, e)
+        case NonFatal(e) =>
+          errorHandler.onServerError(enrichedRequest, e)
       }
   }
 }
