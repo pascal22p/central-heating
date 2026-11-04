@@ -31,10 +31,8 @@ class MqttMessageHandlerService @Inject() (
         for {
           _ <- devicesQueries.saveTrv(trv)
           _ <- heatingControlService.onTrvUpdate(trv)
-          _ <- Future.successful(mqttActionsService.checkExternalSensor(trv))
-          // There is seem to be a bug on one trv where the system mode and temperature sensor selection are not being kept.
+          _ <- mqttActionsService.checkExternalSensor(trv)
           _ <- mqttActionsService.enforceSystemMode(trv)
-          _ <- mqttActionsService.enforceRemoteSensor(trv)
         } yield ()
       }
     } else if (temperatureTopics.contains(topic)) {
