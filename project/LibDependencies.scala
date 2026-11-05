@@ -21,7 +21,7 @@ object LibDependencies {
   val libraryDependenciesTest: Seq[ModuleID] = Seq(
     "org.scalatestplus.play"  %% "scalatestplus-play" % "7.0.2",
     "org.scalatestplus"       %% "mockito-5-10"       % "3.2.18.0",
-    "org.jsoup"               %  "jsoup"              % "1.23.2",
+    "org.jsoup"               %  "jsoup"              % "1.24.1",
     "org.wiremock"            % "wiremock"            % "3.13.2"
   ).map(_ % Test)
 
