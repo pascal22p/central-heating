@@ -1,14 +1,15 @@
 package services
 
 import play.api.libs.json.*
-import play.api.Logging
+import scala.concurrent.{ ExecutionContext, Future }
 
-import scala.concurrent.{ExecutionContext, Future}
+import uk.gov.hmrc.http.HeaderCarrier
+
 import com.google.inject.Inject
+
 import cats.data.EitherT
 import models.LoggingWithRequest
 import queries.CacheQueries
-import uk.gov.hmrc.http.HeaderCarrier
 
 class CacheService @Inject() (
     cacheQueries: CacheQueries
@@ -20,8 +21,7 @@ class CacheService @Inject() (
 
   def cache[L, A: Format](
       key: String
-  )(f: => EitherT[Future, L, A]
-  )(implicit hc: HeaderCarrier): EitherT[Future, L, A] = {
+  )(f: => EitherT[Future, L, A])(implicit hc: HeaderCarrier): EitherT[Future, L, A] = {
     def fetchAndCache: EitherT[Future, L, A] =
       for {
         result <- f
