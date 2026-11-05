@@ -11,8 +11,8 @@ class ApplicationFilters @Inject() (
     accessLogFilter: AccessLogFilter
 ) extends DefaultHttpFilters(
       (Seq(
-        requestAttrFilter,
         sessionFilter,
+        requestAttrFilter,
         accessLogFilter
       ) ++ enabledFilters.filters)*
     )
