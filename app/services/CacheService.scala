@@ -16,8 +16,10 @@ class CacheService @Inject() (
 )(implicit ec: ExecutionContext)
     extends LoggingWithRequest {
 
-  def deleteFromCache(cacheKey: String): Future[Unit] =
+  def deleteFromCache(cacheKey: String): Future[Unit] = {
+    logger.debug(s"Deleting cache for key $cacheKey")
     cacheQueries.deleteFromCache(cacheKey).map(_ => ())
+  }
 
   def cache[L, A: Format](
       key: String
