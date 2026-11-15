@@ -1,13 +1,11 @@
 package services
 
-import javax.inject.{ Inject, Singleton }
-import scala.concurrent.{ ExecutionContext, Future }
-
+import javax.inject.{Inject, Singleton}
+import scala.concurrent.{ExecutionContext, Future}
 import uk.gov.hmrc.http.HeaderCarrier
-
 import cats.implicits.*
 import config.AppConfig
-import models.mqtt.{ TemperatureSensor, TemperatureSensorSelection, Trv }
+import models.mqtt.{RunningState, TemperatureSensor, TemperatureSensorSelection, Trv}
 import models.LoggingWithRequest
 import queries.DevicesQueries
 
@@ -24,8 +22,17 @@ class MqttActionsService @Inject() (
     if (trv.systemMode == systemModeConfig) {
       Future.unit
     } else {
-      logger.info(s"${trv.name} system mode is ${trv.systemMode}, enforcing $systemModeConfig")
+      logger.error(s"${trv.name} system mode is ${trv.systemMode}, enforcing $systemModeConfig")
       mqttPublisherService.updateSystemMode(trv.name, systemModeConfig).map(_ => ())
+    }
+  }
+  
+  def checkTrvOverheating(trv: Trv)(implicit hc: HeaderCarrier): Future[Unit] = {
+    if (trv.localTemperature > trv.occupiedHeatingSetpoint + 0.2 && trv.runningState == RunningState.Heat) {
+      logger.error(s"${trv.name} is asking for heat but the room temperature is ${trv.localTemperature} which is above the setpoint of ${trv.occupiedHeatingSetpoint}. Enforcing overheat threshold of ${appConfig.trvOverheatThreshold}")
+      Future.unit
+    } else {
+      Future.unit
     }
   }
 

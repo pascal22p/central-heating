@@ -33,6 +33,7 @@ class MqttMessageHandlerService @Inject() (
           _ <- heatingControlService.onTrvUpdate(trv)
           _ <- mqttActionsService.checkExternalSensor(trv)
           _ <- mqttActionsService.enforceSystemMode(trv)
+          _ <- mqttActionsService.checkTrvOverheating(trv)
         } yield ()
       }
     } else if (temperatureTopics.contains(topic)) {
