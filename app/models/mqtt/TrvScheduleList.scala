@@ -1,6 +1,9 @@
 package models.mqtt
 
+import java.time.LocalTime
 import play.api.libs.json.{ Format, Json, Reads, Writes }
+
+import models.{ HeatingSchedule, HeatingScheduleTransition }
 
 final case class TrvScheduleList(
     monday: String,
@@ -10,7 +13,33 @@ final case class TrvScheduleList(
     friday: String,
     saturday: String,
     sunday: String
-) derives CanEqual
+) derives CanEqual {
+  private val block = """(\d{2}:\d{2})/(\d+(?:\.\d+)?)""".r
+
+  def toHeatingSchedule: HeatingSchedule = {
+    require(
+      List(monday, tuesday, wednesday, thursday, friday).forall(_ == monday) && saturday == sunday,
+      "All days of the week must be equal as well as saturday and sunday for a valid heating schedule"
+    )
+
+    val weekdays = block
+      .findAllMatchIn(monday)
+      .map { transition =>
+        HeatingScheduleTransition(LocalTime.parse(transition.group(1)), transition.group(2).toDouble)
+      }
+      .toSeq
+
+    val weekend = block
+      .findAllMatchIn(saturday)
+      .map { transition =>
+        HeatingScheduleTransition(LocalTime.parse(transition.group(1)), transition.group(2).toDouble)
+      }
+      .toSeq
+
+    HeatingSchedule("", weekdays, weekend)
+  }
+
+}
 
 object TrvScheduleList {
   val sqlFormat: Format[TrvScheduleList] = Json.format[TrvScheduleList]

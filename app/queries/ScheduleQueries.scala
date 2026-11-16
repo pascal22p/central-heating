@@ -86,7 +86,10 @@ final class ScheduleQueries @Inject() (
       SQL(
         """INSERT INTO schedules (id, description, schedule)
           |VALUES ({id}, {description}, {schedule})
-          |ON DUPLICATE KEY UPDATE schedule = VALUES(schedule)""".stripMargin
+          |ON DUPLICATE KEY UPDATE
+          |    schedule = VALUES(schedule),
+          |    description = VALUES(description)
+          """.stripMargin
       )
         .on(
           "id"          -> id,
