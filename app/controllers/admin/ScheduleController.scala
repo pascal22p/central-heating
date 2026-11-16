@@ -22,7 +22,7 @@ final class ScheduleController @Inject() (
     with I18nSupport {
 
   def showSchedules: Action[AnyContent] = authJourney.guestAccess.async { implicit request =>
-    scheduleQueries.getSchedules.map(schedules => Ok(schedulesView(schedules)))
+    scheduleQueries.getAllSchedules.map(schedules => Ok(schedulesView(schedules)))
   }
 
   def editHeatingSchedule(id: Int): Action[AnyContent] = authJourney.authWithAdminRight.async { implicit request =>

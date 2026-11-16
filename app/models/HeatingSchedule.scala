@@ -2,6 +2,8 @@ package models
 
 import play.api.libs.json.{ Json, OFormat }
 
+import anorm.*
+import anorm.SqlParser.*
 import models.mqtt.TrvScheduleList
 
 final case class HeatingSchedule(
@@ -46,4 +48,15 @@ final case class HeatingSchedule(
 
 object HeatingSchedule {
   implicit val formats: OFormat[HeatingSchedule] = Json.format[HeatingSchedule]
+
+  val sqlParser: RowParser[HeatingSchedule] =
+    (str("description") ~ str("schedule")).map {
+      case description ~ jsonString =>
+        val parsed = Json.parse(jsonString)
+        HeatingSchedule(
+          description = description,
+          weekdays = (parsed \ "weekdays").as[Seq[HeatingScheduleTransition]].sortBy(_.start),
+          weekend = (parsed \ "weekend").as[Seq[HeatingScheduleTransition]].sortBy(_.start)
+        )
+    }
 }

@@ -7,7 +7,7 @@ import scala.concurrent.Future
 
 import anorm.*
 import cats.data.OptionT
-import models.{ DatabaseExecutionContext, DeviceHeatingSchedule, HeatingSchedule, HeatingScheduleTransition }
+import models.{ DatabaseExecutionContext, DeviceHeatingSchedule, HeatingSchedule }
 
 @Singleton
 final class ScheduleQueries @Inject() (
@@ -23,24 +23,14 @@ final class ScheduleQueries @Inject() (
     }
   }(using databaseExecutionContext)
 
-  def getNewSchedule(topic: String, activeGroup: Int): OptionT[Future, HeatingSchedule] = OptionT(Future {
+  def getScheduleByTopic(topic: String, activeGroup: Int): OptionT[Future, HeatingSchedule] = OptionT(Future {
     db.withConnection { implicit conn =>
       SQL("""SELECT schedules.description, schedules.schedule FROM topics
             |LEFT JOIN topic_schedule ON topics.id = topic_schedule.topic
             |LEFT JOIN schedules ON topic_schedule.schedule = schedules.id
             |WHERE topics.name = {topic} AND topic_schedule.schedule = {activeGroup}""".stripMargin)
         .on("topic" -> topic, "activeGroup" -> activeGroup)
-        .as(
-          (SqlParser.str("description") ~ SqlParser.str("schedule")).map {
-            case description ~ jsonString =>
-              val parsed = Json.parse(jsonString)
-              HeatingSchedule(
-                description = description,
-                weekdays = (parsed \ "weekdays").as[Seq[HeatingScheduleTransition]],
-                weekend = (parsed \ "weekend").as[Seq[HeatingScheduleTransition]]
-              )
-          }.singleOpt
-        )
+        .as(HeatingSchedule.sqlParser.singleOpt)
     }
   }(using databaseExecutionContext))
 
@@ -49,35 +39,14 @@ final class ScheduleQueries @Inject() (
       SQL("""SELECT description, schedule FROM schedules
             |WHERE id = {id}""".stripMargin)
         .on("id" -> id)
-        .as(
-          (SqlParser.str("description") ~ SqlParser.str("schedule")).map {
-            case description ~ jsonString =>
-              val parsed = Json.parse(jsonString)
-              HeatingSchedule(
-                description = description,
-                weekdays = (parsed \ "weekdays").as[Seq[HeatingScheduleTransition]],
-                weekend = (parsed \ "weekend").as[Seq[HeatingScheduleTransition]]
-              )
-          }.singleOpt
-        )
+        .as(HeatingSchedule.sqlParser.singleOpt)
     }
   }(using databaseExecutionContext))
 
-  def getSchedules: Future[Seq[DeviceHeatingSchedule]] = Future {
+  def getAllSchedules: Future[Seq[DeviceHeatingSchedule]] = Future {
     db.withConnection { implicit conn =>
       SQL("SELECT id, description, schedule FROM schedules ORDER BY id")
-        .as(
-          (SqlParser.int("id") ~ SqlParser.str("description") ~ SqlParser.str("schedule")).map {
-            case id ~ description ~ jsonString =>
-              val parsed   = Json.parse(jsonString)
-              val schedule = HeatingSchedule(
-                description = description,
-                weekdays = (parsed \ "weekdays").as[Seq[HeatingScheduleTransition]],
-                weekend = (parsed \ "weekend").as[Seq[HeatingScheduleTransition]]
-              )
-              DeviceHeatingSchedule(id, schedule)
-          }.*
-        )
+        .as(DeviceHeatingSchedule.parser.*)
     }
   }(using databaseExecutionContext)
 

@@ -45,7 +45,7 @@ class MqttActionsService @Inject() (
     logger.debug(
       s"Checking schedule for ${trv.name} - active group: ${trv.scheduleActiveGroup}, group to edit: ${trv.scheduleGroupToEdit}"
     )
-    scheduleQueries.getNewSchedule(trv.name, trv.scheduleActiveGroup).foldF(Future.unit) { schedule =>
+    scheduleQueries.getScheduleByTopic(trv.name, trv.scheduleActiveGroup).foldF(Future.unit) { schedule =>
       val trvSchedule = trv.schedule.toHeatingSchedule
       if (trvSchedule == schedule) {
         Future.unit

@@ -171,12 +171,12 @@ class DevicesServiceSpec extends BaseSpec {
   "DevicesService.targetTemperature" should {
 
     "return the standby temperature when no schedule is found" in {
-      when(mockScheduleQueries.getNewSchedule(trvTopic, 1))
+      when(mockScheduleQueries.getScheduleByTopic(trvTopic, 1))
         .thenReturn(OptionT.none[Future, HeatingSchedule])
 
       service().targetTemperature(trvTopic, 1).futureValue mustBe standbyTemperature
 
-      verify(mockScheduleQueries).getNewSchedule(trvTopic, 1)
+      verify(mockScheduleQueries).getScheduleByTopic(trvTopic, 1)
     }
 
     "use the weekday schedule on Monday" in {
@@ -192,7 +192,7 @@ class DevicesServiceSpec extends BaseSpec {
         )
       )
 
-      when(mockScheduleQueries.getNewSchedule(trvTopic, 1))
+      when(mockScheduleQueries.getScheduleByTopic(trvTopic, 1))
         .thenReturn(OptionT.pure[Future](heatingSchedule))
 
       service(mondayClock).targetTemperature(trvTopic, 1).futureValue mustBe 20.0
@@ -211,7 +211,7 @@ class DevicesServiceSpec extends BaseSpec {
         )
       )
 
-      when(mockScheduleQueries.getNewSchedule(trvTopic, 1))
+      when(mockScheduleQueries.getScheduleByTopic(trvTopic, 1))
         .thenReturn(OptionT.pure[Future](heatingSchedule))
 
       service(saturdayClock).targetTemperature(trvTopic, 1).futureValue mustBe 19.0
@@ -228,7 +228,7 @@ class DevicesServiceSpec extends BaseSpec {
         weekend = Seq.empty
       )
 
-      when(mockScheduleQueries.getNewSchedule(trvTopic, 1))
+      when(mockScheduleQueries.getScheduleByTopic(trvTopic, 1))
         .thenReturn(OptionT.pure[Future](heatingSchedule))
 
       service(mondayClock).targetTemperature(trvTopic, 1).futureValue mustBe 20.0
@@ -244,7 +244,7 @@ class DevicesServiceSpec extends BaseSpec {
         weekend = Seq.empty
       )
 
-      when(mockScheduleQueries.getNewSchedule(trvTopic, 1))
+      when(mockScheduleQueries.getScheduleByTopic(trvTopic, 1))
         .thenReturn(OptionT.pure[Future](heatingSchedule))
 
       service(mondayClock).targetTemperature(trvTopic, 1).futureValue mustBe 18.0

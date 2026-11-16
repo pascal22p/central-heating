@@ -62,7 +62,7 @@ class DevicesService @Inject() (
     val now = LocalDateTime.now(clock)
 
     scheduleQueries
-      .getNewSchedule(sensorName, activeGroup)
+      .getScheduleByTopic(sensorName, activeGroup)
       .fold {
         logger.warn(s"No schedule period found for $sensorName and time $now.")
         appConfig.heatingDemandStandbyTemperatureCelsius
