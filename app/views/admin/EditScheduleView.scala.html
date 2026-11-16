@@ -1,0 +1,107 @@
+@import forms.ScheduleFormData
+@import uk.gov.hmrc.govukfrontend.views.html.components._
+@import uk.gov.hmrc.govukfrontend.views.Implicits._
+@import uk.gov.hmrc.govukfrontend.views.viewmodels.table._
+
+@this(
+  main: Main,
+  formHelper: FormWithCSRF,
+  govukErrorSummary: GovukErrorSummary,
+  govukInput: GovukInput,
+  govukTable: GovukTable,
+  govukButton: GovukButton
+)
+
+@(form: Form[ScheduleFormData], action: Call, pageTitle: String = "Edit schedule")(implicit authenticatedRequest: AuthenticatedRequest[?], messages: Messages)
+
+@* Where an error summary link should land: the field itself, or the first row for day-level errors *@
+@errorHref(e: FormError) = @{
+  if (e.key.nonEmpty) "#" + form(e.key).id
+  else if (e.args.headOption.exists(_.toString == "Weekend")) "#" + form("weekend[0].start").id
+  else "#" + form("weekdays[0].start").id
+}
+
+@dayTable(prefix: String, caption: String) = {
+  @govukTable(Table(
+    caption = Some(caption),
+    captionClasses = "govuk-table__caption--s",
+    head = Some(Seq(
+      HeadCell(content = Text("From (HH:mm)")),
+      HeadCell(content = Text("Temperature (°C)"))
+    )),
+    rows = (0 until 12).map { i =>
+      val start = form(s"$prefix[$i].start")
+      val temperature = form(s"$prefix[$i].temperature")
+
+      Seq(
+        TableRow(content = HtmlContent(
+          govukInput(Input(
+            label = Label(
+              content = Text(s"$caption start time ${i + 1}"),
+              classes = "govuk-visually-hidden"
+            ),
+            classes = "govuk-input--width-4",
+            autocomplete = Some("off")
+          ).withFormField(start))
+        )),
+        TableRow(content = HtmlContent(
+          govukInput(Input(
+            label = Label(
+              content = Text(s"$caption temperature ${i + 1}"),
+              classes = "govuk-visually-hidden"
+            ),
+            classes = "govuk-input--width-4",
+            inputType = "text",
+            inputmode = Some("decimal"),
+            autocomplete = Some("off")
+          ).withFormField(temperature))
+        ))
+      )
+    }
+  ))
+}
+
+@main(title = pageTitle) {
+
+  @if(form.hasErrors) {
+    @govukErrorSummary(ErrorSummary(
+      title = Text("There is a problem"),
+      errorList = form.errors.map { e =>
+        ErrorLink(
+          href = Some(errorHref(e)),
+          content = Text(messages(e.message, e.args*))
+        )
+      }
+    ))
+  }
+
+  <p class="govuk-body">
+    Enter up to 12 transitions for each day type. The first start time must be 00:00.
+    Leave unused rows empty.
+  </p>
+
+  @formHelper(action = action) {
+    <div class="govuk-grid-row">
+      <div class="govuk-grid-column-one-half">
+        @govukInput(Input(
+          label = Label(content = Text("Description")),
+          autocomplete = Some("off")
+        ).withFormField(form("description")))
+      </div>
+    </div>
+
+    <div class="govuk-grid-row">
+      <div class="govuk-grid-column-one-half">
+        @dayTable("weekdays", "Weekdays")
+      </div>
+      <div class="govuk-grid-column-one-half">
+        @dayTable("weekend", "Weekend")
+      </div>
+    </div>
+
+    @govukButton(Button(
+      content = Text("Save schedule"),
+      preventDoubleClick = Some(true)
+    ))
+  }
+}

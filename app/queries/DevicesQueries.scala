@@ -15,34 +15,34 @@ final class DevicesQueries @Inject() (
     databaseExecutionContext: DatabaseExecutionContext
 ) {
 
-  def saveTrv(trv: Trv): Future[Unit] = Future {
-    db.withConnection { implicit conn =>
+  private def save(name: String, deviceType: DeviceType, data: String): Future[Int] = Future {
+    db.withTransaction { implicit conn =>
+      // register the topic if this is the first message from the device
+      SQL("INSERT IGNORE INTO topics (name) VALUES ({name})")
+        .on("name" -> name)
+        .executeUpdate()
+
       SQL(
-        """INSERT INTO devices (
-          |    name,
-          |    deviceType,
-          |    data,
-          |    expires_at
-          |)
-          |VALUES (
-          |    {name},
-          |    {deviceType},
-          |    {data},
-          |    CURRENT_TIMESTAMP + INTERVAL 1 HOUR
-          |)
+        """INSERT INTO devices (topic, deviceType, data, expires_at)
+          |SELECT id, {deviceType}, {data}, CURRENT_TIMESTAMP + INTERVAL 1 HOUR
+          |FROM topics
+          |WHERE name = {name}
           |ON DUPLICATE KEY UPDATE
+          |    deviceType = VALUES(deviceType),
           |    data = VALUES(data),
-          |    expires_at = CURRENT_TIMESTAMP + INTERVAL 1 HOUR""".stripMargin
+          |    expires_at = VALUES(expires_at)""".stripMargin
       )
         .on(
-          "name"       -> trv.name,
-          "deviceType" -> s"${DeviceType.TRV}",
-          "data"       -> Json.stringify(Json.toJson(trv)(using Trv.sqlFormat))
+          "name"       -> name,
+          "deviceType" -> s"$deviceType",
+          "data"       -> data
         )
-        .execute()
+        .executeUpdate()
     }
-    ()
   }(using databaseExecutionContext)
+
+  def saveTrv(trv: Trv): Future[Int] =
+    save(trv.name, DeviceType.TRV, Json.stringify(Json.toJson(trv)(using Trv.sqlFormat)))
 
   def getTrvs: Future[Seq[Trv]] = Future {
     db.withConnection { implicit conn =>
@@ -55,12 +55,7 @@ final class DevicesQueries @Inject() (
         .as(
           SqlParser
             .str("data")
-            .map {
-              case data =>
-                Json
-                  .parse(data)
-                  .as[Trv](using Trv.sqlFormat)
-            }
+            .map(Json.parse(_).as[Trv](using Trv.sqlFormat))
             .*
         )
     }
@@ -69,9 +64,12 @@ final class DevicesQueries @Inject() (
   def getTrv(deviceName: String): Future[Option[Trv]] = Future {
     db.withConnection { implicit conn =>
       SQL(
-        """SELECT data
-          |FROM devices
-          |WHERE name = {name} AND deviceType = {deviceType} AND expires_at > CURRENT_TIMESTAMP""".stripMargin
+        """SELECT d.data
+          |FROM devices d
+          |JOIN topics t ON t.id = d.topic
+          |WHERE t.name = {name}
+          |  AND d.deviceType = {deviceType}
+          |  AND d.expires_at > CURRENT_TIMESTAMP""".stripMargin
       )
         .on("name" -> deviceName, "deviceType" -> s"${DeviceType.TRV}")
         .as(
@@ -83,34 +81,12 @@ final class DevicesQueries @Inject() (
     }
   }(using databaseExecutionContext)
 
-  def saveTemperatureSensor(sensor: TemperatureSensor): Future[Unit] = Future {
-    db.withConnection { implicit conn =>
-      SQL(
-        """INSERT INTO devices (
-          |    name,
-          |    deviceType,
-          |    data,
-          |    expires_at
-          |)
-          |VALUES (
-          |    {name},
-          |    {deviceType},
-          |    {data},
-          |    CURRENT_TIMESTAMP + INTERVAL 1 HOUR
-          |)
-          |ON DUPLICATE KEY UPDATE
-          |    data = VALUES(data),
-          |    expires_at = CURRENT_TIMESTAMP + INTERVAL 1 HOUR""".stripMargin
-      )
-        .on(
-          "name"       -> sensor.name,
-          "deviceType" -> s"${DeviceType.TEMPERATURE_SENSOR}",
-          "data"       -> Json.stringify(Json.toJson(sensor)(using TemperatureSensor.sqlFormat))
-        )
-        .execute()
-    }
-    ()
-  }(using databaseExecutionContext)
+  def saveTemperatureSensor(sensor: TemperatureSensor): Future[Int] =
+    save(
+      sensor.name,
+      DeviceType.TEMPERATURE_SENSOR,
+      Json.stringify(Json.toJson(sensor)(using TemperatureSensor.sqlFormat))
+    )
 
   def getTemperatureSensors: Future[Seq[TemperatureSensor]] = Future {
     db.withConnection { implicit conn =>
@@ -132,9 +108,12 @@ final class DevicesQueries @Inject() (
   def getTemperatureSensor(deviceName: String): Future[Option[TemperatureSensor]] = Future {
     db.withConnection { implicit conn =>
       SQL(
-        """SELECT data
-          |FROM devices
-          |WHERE name = {name} AND deviceType = {deviceType} AND expires_at > CURRENT_TIMESTAMP""".stripMargin
+        """SELECT d.data
+          |FROM devices d
+          |JOIN topics t ON t.id = d.topic
+          |WHERE t.name = {name}
+          |  AND d.deviceType = {deviceType}
+          |  AND d.expires_at > CURRENT_TIMESTAMP""".stripMargin
       )
         .on("name" -> deviceName, "deviceType" -> s"${DeviceType.TEMPERATURE_SENSOR}")
         .as(

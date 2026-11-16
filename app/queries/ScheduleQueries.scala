@@ -6,7 +6,8 @@ import play.api.libs.json.Json
 import scala.concurrent.Future
 
 import anorm.*
-import models.{ DatabaseExecutionContext, ScheduleDay, SchedulePeriod }
+import cats.data.OptionT
+import models.{ DatabaseExecutionContext, DeviceHeatingSchedule, HeatingSchedule, HeatingScheduleTransition }
 
 @Singleton
 final class ScheduleQueries @Inject() (
@@ -14,46 +15,87 @@ final class ScheduleQueries @Inject() (
     databaseExecutionContext: DatabaseExecutionContext
 ) {
 
-  def saveSchedule(topic: String, schedule: ScheduleDay): Future[Unit] = Future {
+  def insertSchedule(schedule: HeatingSchedule): Future[Long] = Future {
     db.withConnection { implicit conn =>
-      SQL(
-        """INSERT INTO sensor_schedules (
-          |    topic,
-          |    periods
-          |)
-          |VALUES (
-          |    {topic},
-          |    {periods}
-          |)
-          |ON DUPLICATE KEY UPDATE
-          |    periods = VALUES(periods)""".stripMargin
-      )
-        .on(
-          "topic"   -> topic,
-          "periods" -> s"${Json.toJson(schedule.periods)}"
-        )
-        .execute()
+      SQL("INSERT INTO schedules (schedule) VALUES ({schedule})")
+        .on("schedule" -> Json.stringify(Json.toJson(schedule)))
+        .executeInsert(SqlParser.scalar[Long].single)
     }
-    ()
   }(using databaseExecutionContext)
 
-  def getSchedule(topic: String): Future[ScheduleDay] = Future {
+  def getNewSchedule(topic: String, activeGroup: Int): OptionT[Future, HeatingSchedule] = OptionT(Future {
     db.withConnection { implicit conn =>
-      val periods = SQL(
-        """SELECT periods
-          |FROM sensor_schedules
-          |WHERE topic = {topic}""".stripMargin
-      )
-        .on("topic" -> topic)
+      SQL("""SELECT schedules.description, schedules.schedule FROM topics
+            |LEFT JOIN topic_schedule ON topics.id = topic_schedule.topic
+            |LEFT JOIN schedules ON topic_schedule.schedule = schedules.id
+            |WHERE topics.name = {topic} AND topic_schedule.schedule = {activeGroup}""".stripMargin)
+        .on("topic" -> topic, "activeGroup" -> activeGroup)
         .as(
-          SqlParser
-            .str("periods")
-            .map(Json.parse(_).as[Seq[SchedulePeriod]])
-            .singleOpt
+          (SqlParser.str("description") ~ SqlParser.str("schedule")).map {
+            case description ~ jsonString =>
+              val parsed = Json.parse(jsonString)
+              HeatingSchedule(
+                description = description,
+                weekdays = (parsed \ "weekdays").as[Seq[HeatingScheduleTransition]],
+                weekend = (parsed \ "weekend").as[Seq[HeatingScheduleTransition]]
+              )
+          }.singleOpt
         )
-        .getOrElse(Seq.empty)
-      ScheduleDay(periods)
     }
+  }(using databaseExecutionContext))
+
+  def getScheduleById(id: Int): OptionT[Future, HeatingSchedule] = OptionT(Future {
+    db.withConnection { implicit conn =>
+      SQL("""SELECT description, schedule FROM schedules
+            |WHERE id = {id}""".stripMargin)
+        .on("id" -> id)
+        .as(
+          (SqlParser.str("description") ~ SqlParser.str("schedule")).map {
+            case description ~ jsonString =>
+              val parsed = Json.parse(jsonString)
+              HeatingSchedule(
+                description = description,
+                weekdays = (parsed \ "weekdays").as[Seq[HeatingScheduleTransition]],
+                weekend = (parsed \ "weekend").as[Seq[HeatingScheduleTransition]]
+              )
+          }.singleOpt
+        )
+    }
+  }(using databaseExecutionContext))
+
+  def getSchedules: Future[Seq[DeviceHeatingSchedule]] = Future {
+    db.withConnection { implicit conn =>
+      SQL("SELECT id, description, schedule FROM schedules ORDER BY id")
+        .as(
+          (SqlParser.int("id") ~ SqlParser.str("description") ~ SqlParser.str("schedule")).map {
+            case id ~ description ~ jsonString =>
+              val parsed   = Json.parse(jsonString)
+              val schedule = HeatingSchedule(
+                description = description,
+                weekdays = (parsed \ "weekdays").as[Seq[HeatingScheduleTransition]],
+                weekend = (parsed \ "weekend").as[Seq[HeatingScheduleTransition]]
+              )
+              DeviceHeatingSchedule(id, schedule)
+          }.*
+        )
+    }
+  }(using databaseExecutionContext)
+
+  def upsertHeatingSchedule(id: Option[Int], schedule: HeatingSchedule): Future[Unit] = Future {
+    db.withConnection { implicit conn =>
+      SQL(
+        """INSERT INTO schedules (id, description, schedule)
+          |VALUES ({id}, {description}, {schedule})
+          |ON DUPLICATE KEY UPDATE schedule = VALUES(schedule)""".stripMargin
+      )
+        .on(
+          "id"          -> id,
+          "description" -> schedule.description,
+          "schedule"    -> Json.stringify(Json.toJson(schedule))
+        )
+        .executeUpdate()
+    }
+    ()
   }(using databaseExecutionContext)
 
 }

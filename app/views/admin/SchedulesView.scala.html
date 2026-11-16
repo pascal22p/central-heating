@@ -1,0 +1,60 @@
+@import models.{HeatingScheduleTransition, DeviceHeatingSchedule}
+@import uk.gov.hmrc.govukfrontend.views.html.components._
+
+@this(
+  main: Main,
+  govukTable: GovukTable,
+  govukButton: GovukButton)
+
+@(schedules: Seq[DeviceHeatingSchedule])(implicit authenticatedRequest: AuthenticatedRequest[?], messages: Messages)
+
+@temperatureLabel(t: HeatingScheduleTransition) = @{
+  BigDecimal(t.temperature).bigDecimal.stripTrailingZeros.toPlainString + "°C"
+}
+
+@transitionsTable(caption: String, transitions: Seq[HeatingScheduleTransition]) = {
+  @govukTable(Table(
+    caption = Some(caption),
+    captionClasses = "govuk-table__caption--s",
+    firstCellIsHeader = true,
+    head = Some(Seq(
+      HeadCell(content = Text("From")),
+      HeadCell(content = Text("Until")),
+      HeadCell(content = Text("Temperature"), format = Some("numeric"))
+    )),
+    rows = transitions.zipWithIndex.map { (t, i) =>
+      // each transition runs until the next one starts; the last runs to the end of the day
+      val until = transitions.lift(i + 1).map(_.start.toString).getOrElse("24:00")
+      Seq(
+        TableRow(content = Text(t.start.toString)),
+        TableRow(content = Text(until)),
+        TableRow(content = Text(temperatureLabel(t).toString), format = Some("numeric"))
+      )
+    }
+  ))
+}
+
+@main(title = "Schedules") {
+  @if(schedules.isEmpty) {
+    <p class="govuk-body">No schedules yet.</p>
+  } else {
+    @for(stored <- schedules) {
+      <h2 class="govuk-heading-m">Schedule @stored.id - @stored.heatingSchedule.description</h2>
+
+      @govukButton(Button(
+        content = Text("Edit schedule"),
+        href = Some(controllers.admin.routes.ScheduleController.editHeatingSchedule(stored.id).url)
+      ))
+
+      <div class="govuk-grid-row">
+        <div class="govuk-grid-column-one-half">
+          @transitionsTable("Weekdays", stored.heatingSchedule.weekdays)
+        </div>
+        <div class="govuk-grid-column-one-half">
+          @transitionsTable("Weekend", stored.heatingSchedule.weekend)
+        </div>
+      </div>
+      <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+    }
+  }
+}
