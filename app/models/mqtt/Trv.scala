@@ -13,7 +13,6 @@ final case class Trv(
     battery: Option[Int],
     externalTemperatureInput: Double,
     heatPercentageHour: Double,
-    linkQuality: Int,
     localTemperature: Double,
     localTemperatureCalibration: Double,
     occupiedHeatingSetpoint: Double,
@@ -90,9 +89,6 @@ object Trv {
           (json \ "heat_percentage_hour")
             .validate[Double]
 
-        linkQuality <-
-          (json \ "linkquality").validate[Int]
-
         localTemperature <-
           (json \ "local_temperature")
             .validate[Double]
@@ -139,7 +135,6 @@ object Trv {
         battery = battery,
         externalTemperatureInput = externalTemperatureInput,
         heatPercentageHour = heatPercentageHour,
-        linkQuality = linkQuality,
         localTemperature = localTemperature,
         localTemperatureCalibration = localTemperatureCalibration,
         occupiedHeatingSetpoint = occupiedHeatingSetpoint,

@@ -49,7 +49,6 @@ class MqttMessageHandlerServiceSpec extends BaseSpec {
       "battery"                       -> trv.battery,
       "external_temperature_input"    -> trv.externalTemperatureInput,
       "heat_percentage_hour"          -> trv.heatPercentageHour,
-      "linkquality"                   -> trv.linkQuality,
       "local_temperature"             -> trv.localTemperature,
       "local_temperature_calibration" -> trv.localTemperatureCalibration,
       "occupied_heating_setpoint"     -> trv.occupiedHeatingSetpoint,
@@ -113,6 +112,9 @@ class MqttMessageHandlerServiceSpec extends BaseSpec {
       when(mockDevicesQueries.saveTrv(any[Trv]))
         .thenReturn(Future.successful(1))
 
+      when(mockDevicesQueries.getTrv(any()))
+        .thenReturn(Future.successful(Some(trv)))
+
       when(mockHeatingControlService.onTrvUpdate(any[Trv])(using any()))
         .thenReturn(Future.unit)
 
@@ -136,6 +138,9 @@ class MqttMessageHandlerServiceSpec extends BaseSpec {
           any[TemperatureSensor]
         )
       ).thenReturn(Future.successful(1))
+
+      when(mockDevicesQueries.getTemperatureSensor(any()))
+        .thenReturn(Future.successful(Some(sensor)))
 
       when(
         mockHeatingControlService.onTemperatureSensorUpdate(

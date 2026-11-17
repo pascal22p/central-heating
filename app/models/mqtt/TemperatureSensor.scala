@@ -8,7 +8,7 @@ final case class TemperatureSensor(
     temperature: Double,
     humidity: Double,
     battery: Double
-)
+) derives CanEqual
 
 object TemperatureSensor {
   val sqlFormat: Format[TemperatureSensor] =
