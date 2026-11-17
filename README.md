@@ -4,10 +4,17 @@ Central heating control service written in Scala.
 
 The service integrates Google Nest with Zigbee2MQTT devices to automate heating demand, while exposing metrics through Graphite.
 
+> **Note**: This service only works with the **Google Nest Thermostat** and **Sonoff TRV Gen2**.
+
+## Supported Devices
+
+- **Google Nest Thermostat**
+- **Sonoff TRV Gen2** (via Zigbee2MQTT)
+
 ## Features
 
 - Google Nest thermostat integration
-- Zigbee2MQTT integration for TRVs and temperature sensors
+- Zigbee2MQTT integration for Sonoff TRV Gen2 and temperature sensors
 - Remote temperature sensor to TRV synchronisation
 - Heating-demand control based on temperature sensors and TRVs
 - Manual heating override and Homebridge virtual switch API
@@ -54,6 +61,8 @@ The application listens on port `9245`.
 | `DB_PASSWORD` | Database password |
 | `DB_CACHE_QUERIES_TTL` | Database queries cache TTL (minutes) |
 
+Database schema and table definitions can be found in `doc/tables.sql`.
+
 ### Nest
 
 | Variable | Description |
@@ -63,6 +72,7 @@ The application listens on port `9245`.
 | `NEST_PROJECT_ID` | Nest project ID |
 | `NEST_DEVICE_ID` | Nest device ID |
 | `NEST_REDIRECT_URI` | OAuth redirect URI |
+| `NEST_RATE_LIMIT` | Nest API rate limit in queries/sec (default: `0.08`) |
 
 ### MQTT
 
@@ -72,6 +82,8 @@ The application listens on port `9245`.
 | `MQTT_BROKER_URL` | MQTT broker URL |
 | `MQTT_TRV_DEVICES` | Configured TRV devices (comma-separated topic names) |
 | `MQTT_TEMPERATURE_DEVICES` | Configured temperature sensors (comma-separated topic names) |
+| `MQTT_TRV_HEATING_MODE` | TRV system mode: `Auto`, `Off`, or `Heat` (default: `Auto`) |
+| `MQTT_UPDATE_SCHEDULES` | Enables updating TRV schedules over MQTT (default: `false`) |
 | `TEMPERATURE_SENSOR_MAPPING` | Mapping of external temperature sensor to TRV (e.g. `sensor1:trv1,sensor2:trv2`) |
 
 MQTT is disabled by default.
@@ -116,6 +128,16 @@ HEATING_DEMAND_MINIMUM_OFF=5 minutes
 | `GRAPHITE_HOST` | Graphite host |
 | `GRAPHITE_PORT` | Graphite port |
 | `GRAPHITE_PREFIX` | Metric prefix |
+
+## API
+
+The service provides endpoints intended for integration with Homebridge virtual switches or external automation. All endpoints require the `Authorization: Bearer <API_BEARER_TOKEN>` header.
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/nest/status` | Returns `1` if heating is actively running, `0` otherwise |
+| `PUT` | `/api/nest/on` | Sets a 60-minute manual heating override to active mode |
+| `PUT` | `/api/nest/off` | Sets a 60-minute manual heating override to idle mode |
 
 ## Development
 
