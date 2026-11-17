@@ -1,6 +1,9 @@
 package models.mqtt
 
+import java.time.LocalTime
 import play.api.libs.json.*
+
+import uk.gov.hmrc.http.HeaderCarrier
 
 import models.*
 import utils.EnumFormats
@@ -23,7 +26,39 @@ final case class Trv(
     scheduleActiveGroup: Int,
     scheduleGroupToEdit: Int,
     schedule: TrvScheduleList
-) derives CanEqual
+) extends LoggingWithRequest derives CanEqual {
+  private val block = """(\d{2}:\d{2})/(\d+(?:\.\d+)?)""".r
+
+  def toHeatingSchedule(implicit hc: HeaderCarrier): HeatingSchedule = {
+    if (
+      !List(schedule.monday, schedule.tuesday, schedule.wednesday, schedule.thursday, schedule.friday).forall(
+        _ == schedule.monday
+      )
+    ) {
+      logger.warn(s"Weekdays schedules are not equal for trv $name, using Monday schedule for weekdays")
+    }
+
+    if (schedule.saturday != schedule.sunday) {
+      logger.warn(s"Weekend schedules are not equal for trv $name, using Saturday schedule for weekend")
+    }
+
+    val weekdays = block
+      .findAllMatchIn(schedule.monday)
+      .map { transition =>
+        HeatingScheduleTransition(LocalTime.parse(transition.group(1)), transition.group(2).toDouble)
+      }
+      .toSeq
+
+    val weekend = block
+      .findAllMatchIn(schedule.saturday)
+      .map { transition =>
+        HeatingScheduleTransition(LocalTime.parse(transition.group(1)), transition.group(2).toDouble)
+      }
+      .toSeq
+
+    HeatingSchedule("", weekdays, weekend)
+  }
+}
 
 object Trv {
 
