@@ -1,10 +1,11 @@
 package models
 
-import play.api.libs.json.{ Json, OFormat }
-
+import play.api.libs.json.{Json, OFormat}
 import anorm.*
 import anorm.SqlParser.*
 import models.mqtt.TrvScheduleList
+
+import java.text.DecimalFormat
 
 final case class HeatingSchedule(
     description: String,
@@ -24,13 +25,13 @@ final case class HeatingSchedule(
   def toTrvSchedule: TrvScheduleList = {
     val weekdaysString = weekdays
       .map { transition =>
-        s"${transition.start.toString}/${"%.2f".format(transition.temperature)}"
+        s"${transition.start.toString}/${new DecimalFormat("0.##").format(transition.temperature)}"
       }
       .mkString(" ")
 
     val weekendString = weekend
       .map { transition =>
-        s"${transition.start.toString}/${"%.2f".format(transition.temperature)}"
+        s"${transition.start.toString}/${new DecimalFormat("0.##").format(transition.temperature)}"
       }
       .mkString(" ")
 
