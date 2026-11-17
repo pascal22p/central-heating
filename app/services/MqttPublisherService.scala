@@ -135,27 +135,29 @@ class MqttPublisherService @Inject() (
       activeGroup: Int,
       schedule: TrvScheduleList
   )(implicit hc: HeaderCarrier): Future[Done] = {
-    logger.info(
-      s"Updating TRV schedule on $device with $schedule"
-    )
-
-    for {
-      _ <- publish(
-        MqttMessage(
-          s"$device/set",
-          ByteString(s"""{"schedule_group_to_edit":$activeGroup}""")
-        )
+    if (appConfig.mqttUpdateSchedules) {
+      logger.info(
+        s"Updating TRV schedule on $device with $schedule"
       )
 
-      _ <- Future.successful(Thread.sleep(500))
-
-      _ <- publish(
-        MqttMessage(
-          s"$device/set",
-          ByteString(Json.stringify(Json.toJson(schedule)(using TrvScheduleList.mqttWrites)))
+      for {
+        _ <- publish(
+          MqttMessage(
+            s"$device/set",
+            ByteString(s"""{"schedule_group_to_edit":$activeGroup}""")
+          )
         )
-      )
-    } yield Done
+
+        _ <- Future.successful(Thread.sleep(500))
+
+        _ <- publish(
+          MqttMessage(
+            s"$device/set",
+            ByteString(Json.stringify(Json.toJson(schedule)(using TrvScheduleList.mqttWrites)))
+          )
+        )
+      } yield Done
+    } else Future.successful(Done)
   }
 
   @SuppressWarnings(Array("org.wartremover.warts.ToString"))

@@ -39,7 +39,9 @@ final case class Trv(
     }
 
     if (schedule.saturday != schedule.sunday) {
-      logger.warn(s"Weekend schedules are not equal for trv $name, using Saturday schedule for weekend")
+      logger.warn(
+        s"Weekend schedules are not equal (saturday = ${schedule.saturday}, sunday = ${schedule.sunday}) for trv $name, using Saturday schedule for weekend"
+      )
     }
 
     val weekdays = block

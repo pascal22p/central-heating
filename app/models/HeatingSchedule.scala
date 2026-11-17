@@ -1,11 +1,11 @@
 package models
 
-import play.api.libs.json.{Json, OFormat}
+import java.text.DecimalFormat
+import play.api.libs.json.{ Json, OFormat }
+
 import anorm.*
 import anorm.SqlParser.*
 import models.mqtt.TrvScheduleList
-
-import java.text.DecimalFormat
 
 final case class HeatingSchedule(
     description: String,
