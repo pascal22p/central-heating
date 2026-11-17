@@ -28,7 +28,7 @@ final class ScheduleQueries @Inject() (
       SQL("""SELECT schedules.description, schedules.schedule FROM topics
             |LEFT JOIN topic_schedule ON topics.id = topic_schedule.topic
             |LEFT JOIN schedules ON topic_schedule.schedule = schedules.id
-            |WHERE topics.name = {topic} AND topic_schedule.schedule = {activeGroup}""".stripMargin)
+            |WHERE topics.name = {topic} AND topic_schedule.schedule_number = {activeGroup}""".stripMargin)
         .on("topic" -> topic, "activeGroup" -> activeGroup)
         .as(HeatingSchedule.sqlParser.singleOpt)
     }
