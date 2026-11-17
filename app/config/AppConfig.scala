@@ -121,6 +121,12 @@ class AppConfig @Inject() (configuration: Configuration) {
       .split(",")
       .toSet
 
+  lazy val mqttUpdateSchedules: Boolean =
+    configuration
+      .get[Boolean](
+        "microservice.services.mqtt.update-schedules"
+      )
+
   lazy val temperatureSensorMapping: Map[String, List[String]] =
     configuration
       .get[String]("temperature-sensor-mapping")
