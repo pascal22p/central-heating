@@ -65,7 +65,7 @@ DROP TABLE IF EXISTS `schedules`;
 CREATE TABLE `schedules` (
                              `id` int(11) NOT NULL AUTO_INCREMENT,
                              `description` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-                             `schedule` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+                             `schedule` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`schedule`)),
                              PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
@@ -112,4 +112,4 @@ CREATE TABLE `topic_schedule` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 
--- 2026-11-16 18:07:14 UTC
+-- 2026-11-17 08:28:10 UTC
