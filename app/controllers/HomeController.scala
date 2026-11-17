@@ -1,6 +1,5 @@
 package controllers
 
-import java.time.{ Clock, LocalTime }
 import javax.inject.{ Inject, Singleton }
 import play.api.i18n.I18nSupport
 import play.api.mvc.{ Action, AnyContent, BaseController, ControllerComponents }
@@ -10,10 +9,9 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.http.HeaderCarrierConverter
 
 import actions.AuthJourney
-import config.AppConfig
 import connectors.NestConnector
 import models.mqtt.TemperatureSensor
-import queries.{ HeatingOverrideQueries, ScheduleQueries }
+import queries.HeatingOverrideQueries
 import services.DevicesService
 import views.html.DashboardView
 
@@ -21,13 +19,10 @@ import views.html.DashboardView
 class HomeController @Inject() (
     val controllerComponents: ControllerComponents,
     authAction: AuthJourney,
-    appConfig: AppConfig,
     nestConnector: NestConnector,
     devicesService: DevicesService,
-    scheduleQueries: ScheduleQueries,
     heatingOverrideQueries: HeatingOverrideQueries,
-    dashboardView: DashboardView,
-    clock: Clock
+    dashboardView: DashboardView
 )(implicit ec: ExecutionContext)
     extends BaseController
     with I18nSupport {
@@ -55,14 +50,8 @@ class HomeController @Inject() (
 
   private def sensorStatus(
       sensor: TemperatureSensor
-  ): Future[(TemperatureSensor, Double)] =
-    scheduleQueries.getSchedule(sensor.name).map { schedule =>
-      val now    = LocalTime.now(clock)
-      val target = schedule.periods
-        .find(period => !now.isBefore(period.start) && !now.isAfter(period.end))
-        .map(_.temperature)
-        .getOrElse(appConfig.heatingDemandStandbyTemperatureCelsius)
-
+  )(implicit hc: HeaderCarrier): Future[(TemperatureSensor, Double)] =
+    devicesService.targetTemperature(sensor.name, 1).map { target =>
       sensor -> target
     }
 }

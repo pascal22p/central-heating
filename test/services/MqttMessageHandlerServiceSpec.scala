@@ -73,7 +73,16 @@ class MqttMessageHandlerServiceSpec extends BaseSpec {
         case ChildLock.Locked   => "LOCK"
         case ChildLock.Unlocked => "UNLOCK"
       }),
-      "smart_temperature_control" -> trv.smartTemperatureControl
+      "smart_temperature_control" -> trv.smartTemperatureControl,
+      "schedule_active_group"     -> s"${trv.scheduleActiveGroup}",
+      "schedule_group_to_edit"    -> s"${trv.scheduleGroupToEdit}",
+      "weekly_schedule_monday"    -> trv.schedule.monday,
+      "weekly_schedule_tuesday"   -> trv.schedule.tuesday,
+      "weekly_schedule_wednesday" -> trv.schedule.wednesday,
+      "weekly_schedule_thursday"  -> trv.schedule.thursday,
+      "weekly_schedule_friday"    -> trv.schedule.friday,
+      "weekly_schedule_saturday"  -> trv.schedule.saturday,
+      "weekly_schedule_sunday"    -> trv.schedule.sunday
     )
   }
 
@@ -102,7 +111,7 @@ class MqttMessageHandlerServiceSpec extends BaseSpec {
       val payload = Json.stringify(Json.toJson(trv)(using trvWrites))
 
       when(mockDevicesQueries.saveTrv(any[Trv]))
-        .thenReturn(Future.unit)
+        .thenReturn(Future.successful(1))
 
       when(mockHeatingControlService.onTrvUpdate(any[Trv])(using any()))
         .thenReturn(Future.unit)
@@ -126,7 +135,7 @@ class MqttMessageHandlerServiceSpec extends BaseSpec {
         mockDevicesQueries.saveTemperatureSensor(
           any[TemperatureSensor]
         )
-      ).thenReturn(Future.successful(()))
+      ).thenReturn(Future.successful(1))
 
       when(
         mockHeatingControlService.onTemperatureSensorUpdate(

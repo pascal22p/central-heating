@@ -1,6 +1,5 @@
 package services
 
-import java.time.{ Clock, LocalTime }
 import javax.inject.{ Inject, Singleton }
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.control.NonFatal
@@ -12,16 +11,13 @@ import cats.implicits.toTraverseOps
 import config.AppConfig
 import models.{ HeatingOverride, LoggingWithRequest }
 import models.mqtt.{ RunningState, TemperatureSensor, Trv }
-import queries.ScheduleQueries
 import services.NestService.Result
 
 @Singleton
 class HeatingControlService @Inject() (
     appConfig: AppConfig,
     nestService: NestService,
-    devicesService: DevicesService,
-    scheduleQueries: ScheduleQueries,
-    clock: Clock
+    devicesService: DevicesService
 )(implicit ec: ExecutionContext)
     extends LoggingWithRequest {
 
@@ -42,13 +38,14 @@ class HeatingControlService @Inject() (
 
   def onTemperatureSensorUpdate(sensor: TemperatureSensor)(implicit hc: HeaderCarrier): Future[Unit] =
     execute("Sensor", sensor.name, appConfig.heatingControlIsEnabled && appConfig.sensorControlIsEnabled) {
-      EitherT.liftF[Future, UpstreamErrorResponse, Double](targetTemperature(sensor.name)).flatMap { target =>
-        if (sensor.temperature < target) {
-          val details = s"sensor ${sensor.temperature}deg, target ${target}deg"
-          nestService.turnOn(s"Heat requested by ${sensor.name} ($details)")
-        } else {
-          turnOffUnlessRequested(s"Idle requested by ${sensor.name}")
-        }
+      EitherT.liftF[Future, UpstreamErrorResponse, Double](devicesService.targetTemperature(sensor.name, 1)).flatMap {
+        target =>
+          if (sensor.temperature < target) {
+            val details = s"sensor ${sensor.temperature}deg, target ${target}deg"
+            nestService.turnOn(s"Heat requested by ${sensor.name} ($details)")
+          } else {
+            turnOffUnlessRequested(s"Idle requested by ${sensor.name}")
+          }
       }
     }
 
@@ -106,25 +103,11 @@ class HeatingControlService @Inject() (
   private def devicesRequestingHeat(implicit hc: HeaderCarrier): Future[Seq[String]] =
     for {
       sensors <- devicesService.getTemperatureSensors
-      targets <- sensors.traverse(s => targetTemperature(s.name).map(s -> _))
+      targets <- sensors.traverse(s => devicesService.targetTemperature(s.name, 1).map(s -> _))
       trvs    <- devicesService.getTrvs
     } yield {
       val sensorsWanting = targets.collect { case (s, target) if s.temperature < target => s.name }
       val trvsWanting    = trvs.filter(_.runningState == RunningState.Heat).map(_.name)
       sensorsWanting ++ trvsWanting
     }
-
-  private def targetTemperature(sensorName: String)(implicit hc: HeaderCarrier): Future[Double] = {
-    val now = LocalTime.now(clock)
-
-    scheduleQueries.getSchedule(sensorName).map { schedule =>
-      schedule.periods
-        .find(period => !now.isBefore(period.start) && !now.isAfter(period.end))
-        .map(_.temperature)
-        .getOrElse {
-          logger.info(s"No schedule period found for $sensorName and time $now.")
-          appConfig.heatingDemandStandbyTemperatureCelsius
-        }
-    }
-  }
 }

@@ -3,6 +3,7 @@ package services
 import java.util.{ Locale, UUID }
 import javax.inject.{ Inject, Singleton }
 import play.api.inject.ApplicationLifecycle
+import play.api.libs.json.Json
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.concurrent.duration.DurationInt
 import scala.util.control.NonFatal
@@ -19,7 +20,7 @@ import org.apache.pekko.Done
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
 import config.AppConfig
-import models.mqtt.SystemMode
+import models.mqtt.{ SystemMode, TrvScheduleList }
 import models.LoggingWithRequest
 
 @Singleton
@@ -126,6 +127,35 @@ class MqttPublisherService @Inject() (
         ByteString(s"""{"external_temperature_input":$temperature}""")
       )
     )
+  }
+
+  @SuppressWarnings(Array("org.wartremover.warts.ThreadSleep"))
+  def updateTrvSchedule(
+      device: String,
+      activeGroup: Int,
+      schedule: TrvScheduleList
+  )(implicit hc: HeaderCarrier): Future[Done] = {
+    logger.info(
+      s"Updating TRV schedule on $device with $schedule"
+    )
+
+    for {
+      _ <- publish(
+        MqttMessage(
+          s"$device/set",
+          ByteString(s"""{"schedule_group_to_edit":$activeGroup}""")
+        )
+      )
+
+      _ <- Future.successful(Thread.sleep(500))
+
+      _ <- publish(
+        MqttMessage(
+          s"$device/set",
+          ByteString(Json.stringify(Json.toJson(schedule)(using TrvScheduleList.mqttWrites)))
+        )
+      )
+    } yield Done
   }
 
   @SuppressWarnings(Array("org.wartremover.warts.ToString"))

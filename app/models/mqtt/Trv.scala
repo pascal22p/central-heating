@@ -19,7 +19,10 @@ final case class Trv(
     temperatureSensorSelection: TemperatureSensorSelection,
     openWindowDetected: Boolean,
     childLock: ChildLock,
-    smartTemperatureControl: String
+    smartTemperatureControl: String,
+    scheduleActiveGroup: Int,
+    scheduleGroupToEdit: Int,
+    schedule: TrvScheduleList
 ) derives CanEqual
 
 object Trv {
@@ -29,6 +32,7 @@ object Trv {
     given Format[SystemMode]                 = EnumFormats.enumFormat(SystemMode.values)
     given Format[TemperatureSensorSelection] = EnumFormats.enumFormat(TemperatureSensorSelection.values)
     given Format[ChildLock]                  = EnumFormats.enumFormat(ChildLock.values)
+    given Format[TrvScheduleList]            = TrvScheduleList.sqlFormat
     Json.format[Trv]
   }
 
@@ -81,9 +85,18 @@ object Trv {
         childLockValue <-
           (json \ "child_lock").validate[String]
 
+        scheduleActiveGroup <-
+          (json \ "schedule_active_group").validate[String].map(_.toInt)
+
+        scheduleGroupToEdit <-
+          (json \ "schedule_group_to_edit").validate[String].map(_.toInt)
+
         smartTemperatureControl <-
           (json \ "smart_temperature_control")
             .validate[String]
+
+        schedule <-
+          json.validate[TrvScheduleList](using TrvScheduleList.mqttReads)
       } yield Trv(
         name = name,
         battery = battery,
@@ -134,7 +147,10 @@ object Trv {
               s"Unknown child_lock: $value"
             )
         },
-        smartTemperatureControl = smartTemperatureControl
+        smartTemperatureControl = smartTemperatureControl,
+        scheduleActiveGroup = scheduleActiveGroup,
+        scheduleGroupToEdit = scheduleGroupToEdit,
+        schedule = schedule
       )
     }
 }

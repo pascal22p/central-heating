@@ -2,85 +2,89 @@ package controllers.admin
 
 import javax.inject.{ Inject, Singleton }
 import play.api.i18n.I18nSupport
-import play.api.libs.json.*
 import play.api.mvc.*
 import scala.concurrent.{ ExecutionContext, Future }
-import scala.util.{ Failure, Success, Try }
 
 import actions.AuthJourney
-import models.ScheduleDay
+import models.forms.ScheduleForm
 import queries.ScheduleQueries
-import views.html.ScheduleFormView
+import views.html.admin.{ EditScheduleView, SchedulesView }
 
 @Singleton
 final class ScheduleController @Inject() (
     cc: ControllerComponents,
     scheduleQueries: ScheduleQueries,
     authJourney: AuthJourney,
-    scheduleFormView: ScheduleFormView
+    schedulesView: SchedulesView,
+    editScheduleView: EditScheduleView
 )(using ec: ExecutionContext)
     extends AbstractController(cc)
     with I18nSupport {
 
-  private val defaultJson =
-    """[
-      |  {
-      |    "start": "06:00",
-      |    "end": "22:00",
-      |    "temperature": 20.5
-      |  }
-      |]
-      |""".stripMargin
-
-  def edit(topic: String): Action[AnyContent] = authJourney.authWithAdminRight.async { implicit request =>
-    scheduleQueries.getSchedule(topic).map { schedule =>
-      val json =
-        if (schedule.periods.isEmpty) defaultJson
-        else Json.prettyPrint(Json.toJson(schedule.periods))
-
-      Ok(scheduleFormView(topic, json))
-    }
+  def showSchedules: Action[AnyContent] = authJourney.guestAccess.async { implicit request =>
+    scheduleQueries.getAllSchedules.map(schedules => Ok(schedulesView(schedules)))
   }
 
-  def save(topic: String): Action[AnyContent] = authJourney.authWithAdminRight.async { implicit request =>
-    val data = request.body.asFormUrlEncoded
-      .flatMap(_.get("data"))
-      .getOrElse(Seq.empty)
-      .headOption
-      .getOrElse("")
-
-    Try(Json.parse(data)) match {
-      case Success(json) =>
-        json.validate[Seq[models.SchedulePeriod]] match {
-          case JsSuccess(periods, _) =>
-            val schedule = ScheduleDay(periods)
-
-            scheduleQueries.saveSchedule(topic, schedule).map { _ =>
-              Redirect(controllers.admin.routes.ScheduleController.edit(topic))
-            }
-
-          case JsError(_) =>
-            Future.successful(
-              BadRequest(
-                scheduleFormView(
-                  topic,
-                  data,
-                  Some("Enter valid period JSON.")
-                )
-              )
-            )
-        }
-
-      case Failure(error) =>
-        Future.successful(
-          BadRequest(
-            scheduleFormView(
-              topic,
-              data,
-              Some(s"Enter valid period JSON. $error")
-            )
+  def editHeatingSchedule(id: Int): Action[AnyContent] = authJourney.authWithAdminRight.async { implicit request =>
+    scheduleQueries
+      .getScheduleById(id)
+      .map { schedule =>
+        Ok(
+          editScheduleView(
+            ScheduleForm.fromSchedule(schedule),
+            controllers.admin.routes.ScheduleController.saveHeatingSchedule(id)
           )
         )
-    }
+      }
+      .getOrElse(NotFound("Schedule not found"))
+  }
+
+  def saveHeatingSchedule(id: Int): Action[AnyContent] = authJourney.authWithAdminRight.async { implicit request =>
+    ScheduleForm.form
+      .bindFromRequest()
+      .fold(
+        formWithErrors =>
+          Future.successful(
+            BadRequest(
+              editScheduleView(formWithErrors, controllers.admin.routes.ScheduleController.saveHeatingSchedule(id))
+            )
+          ),
+        data =>
+          scheduleQueries.upsertHeatingSchedule(Some(id), ScheduleForm.toSchedule(data)).map { _ =>
+            Redirect(controllers.admin.routes.ScheduleController.showSchedules)
+          }
+      )
+  }
+
+  def newHeatingSchedule: Action[AnyContent] = authJourney.authWithAdminRight { implicit request =>
+    Ok(
+      editScheduleView(
+        ScheduleForm.initial,
+        controllers.admin.routes.ScheduleController.createHeatingSchedule,
+        "Add schedule"
+      )
+    )
+  }
+
+  def createHeatingSchedule: Action[AnyContent] = authJourney.authWithAdminRight.async { implicit request =>
+    ScheduleForm.form
+      .bindFromRequest()
+      .fold(
+        formWithErrors =>
+          Future.successful(
+            BadRequest(
+              editScheduleView(
+                formWithErrors,
+                controllers.admin.routes.ScheduleController.createHeatingSchedule,
+                "Add schedule"
+              )
+            )
+          ),
+        data =>
+          scheduleQueries.upsertHeatingSchedule(None, ScheduleForm.toSchedule(data)).map { id =>
+            Redirect(controllers.admin.routes.ScheduleController.showSchedules)
+              .flashing("success" -> s"Schedule $id added")
+          }
+      )
   }
 }

@@ -9,13 +9,14 @@ import cats.implicits.*
 import config.AppConfig
 import models.mqtt.{ RunningState, TemperatureSensor, TemperatureSensorSelection, Trv }
 import models.LoggingWithRequest
-import queries.DevicesQueries
+import queries.{ DevicesQueries, ScheduleQueries }
 
 @Singleton
 class MqttActionsService @Inject() (
     appConfig: AppConfig,
     mqttPublisherService: MqttPublisherService,
-    devicesQueries: DevicesQueries
+    devicesQueries: DevicesQueries,
+    scheduleQueries: ScheduleQueries
 )(implicit ec: ExecutionContext)
     extends LoggingWithRequest {
 
@@ -37,6 +38,23 @@ class MqttActionsService @Inject() (
       Future.unit
     } else {
       Future.unit
+    }
+  }
+
+  def enforceTrvSchedule(trv: Trv)(implicit hc: HeaderCarrier): Future[Unit] = {
+    logger.debug(
+      s"Checking schedule for ${trv.name} - active group: ${trv.scheduleActiveGroup}, group to edit: ${trv.scheduleGroupToEdit}"
+    )
+    scheduleQueries.getScheduleByTopic(trv.name, trv.scheduleActiveGroup).foldF(Future.unit) { schedule =>
+      val trvSchedule = trv.schedule.toHeatingSchedule
+      if (trvSchedule == schedule) {
+        Future.unit
+      } else {
+        logger.info(
+          s"Updating schedule for ${trv.name} to $schedule - active group: ${trv.scheduleActiveGroup}"
+        )
+        mqttPublisherService.updateTrvSchedule(trv.name, trv.scheduleActiveGroup, schedule.toTrvSchedule).map(_ => ())
+      }
     }
   }
 

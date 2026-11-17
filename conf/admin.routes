@@ -7,5 +7,11 @@ GET     /nest/set/temperature/:temperature controllers.admin.NestAdminController
 
 GET     /graphite/nest    controllers.admin.GraphiteController.pushNest
 
-GET   /schedule/*topic   controllers.admin.ScheduleController.edit(topic: String)
-POST  /schedule/*topic   controllers.admin.ScheduleController.save(topic: String)
+GET   /schedules         controllers.admin.ScheduleController.showSchedules
+
+GET   /schedules/:id/edit   controllers.admin.ScheduleController.editHeatingSchedule(id: Int)
+POST  /schedules/:id/edit   controllers.admin.ScheduleController.saveHeatingSchedule(id: Int)
+
+GET   /schedules/new   controllers.admin.ScheduleController.newHeatingSchedule
+POST  /schedules/new   controllers.admin.ScheduleController.createHeatingSchedule
+

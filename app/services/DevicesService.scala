@@ -1,5 +1,6 @@
 package services
 
+import java.time.{ Clock, LocalDateTime }
 import javax.inject.{ Inject, Singleton }
 import scala.concurrent.{ ExecutionContext, Future }
 
@@ -9,13 +10,15 @@ import cats.implicits.*
 import config.AppConfig
 import models.mqtt.{ TemperatureSensor, Trv }
 import models.LoggingWithRequest
-import queries.DevicesQueries
+import queries.{ DevicesQueries, ScheduleQueries }
 
 @Singleton
 class DevicesService @Inject() (
     devicesQueries: DevicesQueries,
     appConfig: AppConfig,
-    mqttPublisherService: MqttPublisherService
+    mqttPublisherService: MqttPublisherService,
+    scheduleQueries: ScheduleQueries,
+    clock: Clock
 )(implicit ec: ExecutionContext)
     extends LoggingWithRequest {
 
@@ -53,6 +56,24 @@ class DevicesService @Inject() (
         }
         .map(_.flatten ++ sensors)
     }
+  }
+
+  def targetTemperature(sensorName: String, activeGroup: Int)(implicit hc: HeaderCarrier): Future[Double] = {
+    val now = LocalDateTime.now(clock)
+
+    scheduleQueries
+      .getScheduleByTopic(sensorName, activeGroup)
+      .fold {
+        logger.warn(s"No schedule period found for $sensorName and time $now.")
+        appConfig.heatingDemandStandbyTemperatureCelsius
+      } { schedule =>
+        val periods = now.getDayOfWeek.getValue match {
+          case day if day < 6 => schedule.weekdays
+          case _              => schedule.weekend
+        }
+
+        periods.filter(_.start.isBefore(now.toLocalTime)).maxBy(_.start).temperature
+      }
   }
 
 }

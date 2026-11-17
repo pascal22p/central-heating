@@ -47,7 +47,11 @@ trait BaseSpec
       temperatureSensorSelection: TemperatureSensorSelection = TemperatureSensorSelection.Internal,
       openWindowDetected: Boolean = false,
       childLock: ChildLock = ChildLock.Unlocked,
-      smartTemperatureControl: String = ""
+      smartTemperatureControl: String = "",
+      scheduleActiveGroup: Int = 1,
+      scheduleGroupToEdit: Int = 1,
+      schedule: TrvScheduleList =
+        TrvScheduleList("00:00/16", "00:00/16", "00:00/16", "00:00/16", "00:00/16", "00:00/16", "00:00/16")
   ): Trv =
     Trv(
       name,
@@ -63,7 +67,10 @@ trait BaseSpec
       temperatureSensorSelection,
       openWindowDetected,
       childLock,
-      smartTemperatureControl
+      smartTemperatureControl,
+      scheduleActiveGroup,
+      scheduleGroupToEdit,
+      schedule
     )
 
   def fakeNestTraits(

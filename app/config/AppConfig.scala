@@ -159,4 +159,5 @@ class AppConfig @Inject() (configuration: Configuration) {
 
   lazy val heatingDemandMinimumOff: FiniteDuration =
     configuration.get[FiniteDuration]("heating-demand.minimum-off")
+
 }
