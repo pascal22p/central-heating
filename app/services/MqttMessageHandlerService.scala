@@ -25,24 +25,38 @@ class MqttMessageHandlerService @Inject() (
   private val trvTopics         = appConfig.trvDevices
   private val temperatureTopics = appConfig.temperatureDevices
 
+  private def dropOnIdenticalState[A](maybePrevious: Option[A], current: A, topic: String)(using CanEqual[A, A]) = {
+    if (maybePrevious.contains(current)) {
+      Future.failed(AlreadyInCache(topic))
+    } else {
+      Future.unit
+    }
+  }
+
+  private case class AlreadyInCache(topic: String) extends RuntimeException
+
   def handle(topic: String, payload: String)(implicit hc: HeaderCarrier): Future[Unit] = {
     if (trvTopics.contains(topic)) {
       parseMqttBody[Trv](topic, payload).fold(Future.unit) { trv =>
         for {
-          _ <- devicesQueries.saveTrv(trv)
-          _ <- heatingControlService.onTrvUpdate(trv)
-          _ <- mqttActionsService.checkExternalSensor(trv)
-          _ <- mqttActionsService.enforceSystemMode(trv)
-          _ <- mqttActionsService.enforceTrvSchedule(trv)
-          _ <- mqttActionsService.checkTrvOverheating(trv)
+          maybePrevious <- devicesQueries.getTrv(trv.name)
+          _             <- dropOnIdenticalState(maybePrevious, trv, topic)
+          _             <- devicesQueries.saveTrv(trv)
+          _             <- heatingControlService.onTrvUpdate(trv)
+          _             <- mqttActionsService.checkExternalSensor(trv)
+          _             <- mqttActionsService.enforceSystemMode(trv)
+          _             <- mqttActionsService.enforceTrvSchedule(trv)
+          _             <- mqttActionsService.checkTrvOverheating(trv)
         } yield ()
       }
     } else if (temperatureTopics.contains(topic)) {
       parseMqttBody[TemperatureSensor](topic, payload).fold(Future.unit) { sensor =>
         for {
-          _ <- devicesQueries.saveTemperatureSensor(sensor)
-          _ <- heatingControlService.onTemperatureSensorUpdate(sensor)
-          _ <- mqttActionsService.updateExternalSensor(sensor)
+          maybePrevious <- devicesQueries.getTemperatureSensor(sensor.name)
+          _             <- dropOnIdenticalState(maybePrevious, sensor, topic)
+          _             <- devicesQueries.saveTemperatureSensor(sensor)
+          _             <- heatingControlService.onTemperatureSensorUpdate(sensor)
+          _             <- mqttActionsService.updateExternalSensor(sensor)
         } yield ()
       }
     } else {
@@ -50,6 +64,9 @@ class MqttMessageHandlerService @Inject() (
       Future.unit
     }
   }.recover {
+    case AlreadyInCache(topic) =>
+      logger.debug(s"message from topic `$topic` already processed")
+      ()
     case NonFatal(ex) =>
       logger.error(ex.getMessage, ex)
       ()
