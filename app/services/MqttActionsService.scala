@@ -41,19 +41,25 @@ class MqttActionsService @Inject() (
     }
   }
 
-  def enforceTrvSchedule(trv: Trv)(implicit hc: HeaderCarrier): Future[Unit] = {
+  def checkTrvSchedule(trv: Trv)(implicit hc: HeaderCarrier): Future[Unit] = {
     logger.debug(
-      s"Checking schedule for ${trv.name} - active group: ${trv.scheduleActiveGroup}, group to edit: ${trv.scheduleGroupToEdit}"
+      s"Checking schedule for ${trv.name} - active group: ${trv.scheduleActiveGroup}"
     )
-    scheduleQueries.getScheduleByTopic(trv.name, trv.scheduleActiveGroup).foldF(Future.unit) { schedule =>
-      val trvSchedule = trv.toHeatingSchedule
-      if (trvSchedule == schedule) {
+
+    scheduleQueries.getScheduleByTopic(trv.name, trv.scheduleActiveGroup).foldF(Future.unit) { expected =>
+      val actual = trv.toHeatingSchedule
+
+      if (actual.weekdays == expected.weekdays && actual.weekend == expected.weekend) {
         Future.unit
       } else {
-        logger.info(
-          s"Updating schedule for ${trv.name} to $schedule - active group: ${trv.scheduleActiveGroup}"
+        logger.error(
+          s"""TRV schedule mismatch for ${trv.name}.
+             |Active group: ${trv.scheduleActiveGroup}
+             |Expected schedule: $expected
+             |Actual schedule: $actual
+             |Manual intervention required.""".stripMargin
         )
-        mqttPublisherService.updateTrvSchedule(trv.name, trv.scheduleActiveGroup, schedule.toTrvSchedule).map(_ => ())
+        Future.unit
       }
     }
   }

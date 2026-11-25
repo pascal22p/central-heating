@@ -1,0 +1,44 @@
+
+@import uk.gov.hmrc.govukfrontend.views.html.components._
+
+@this(
+  main: Main,
+  govukPanel: GovukPanel,
+  govukButton: GovukButton
+)
+
+@(device: String)(
+  implicit authenticatedRequest: AuthenticatedRequest[?],
+  messages: Messages
+)
+
+@main(title = "Schedule update sent") {
+
+  @govukPanel(Panel(
+    title = Text("Schedule update sent"),
+    content = Text(device)
+  ))
+
+  <p class="govuk-body">
+    The schedule update message has been sent to the TRV.
+  </p>
+
+  <p class="govuk-body">
+    It can take a while for the TRV to apply the new schedule and send
+    its updated state back to the service. The schedule displayed on the
+    device page may therefore not reflect the update immediately.
+  </p>
+
+  <p class="govuk-body">
+    Once the TRV has reported its updated schedule, you can check whether
+    it matches the expected schedule.
+  </p>
+
+  @govukButton(Button(
+    content = Text("Return to the TRV schedules"),
+    href = Some(
+      controllers.admin.routes.TrvAdminController.showSchedules(Some(device)).url
+    ),
+    isStartButton = false
+  ))
+}

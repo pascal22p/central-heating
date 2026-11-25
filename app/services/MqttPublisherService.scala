@@ -132,32 +132,18 @@ class MqttPublisherService @Inject() (
   @SuppressWarnings(Array("org.wartremover.warts.ThreadSleep"))
   def updateTrvSchedule(
       device: String,
-      activeGroup: Int,
       schedule: TrvScheduleList
   )(implicit hc: HeaderCarrier): Future[Done] = {
-    if (appConfig.mqttUpdateSchedules) {
-      logger.info(
-        s"Updating TRV schedule on $device with $schedule"
+    logger.debug(
+      s"Updating TRV schedule on $device with $schedule"
+    )
+
+    publish(
+      MqttMessage(
+        s"$device/set",
+        ByteString(Json.stringify(Json.toJson(schedule)(using TrvScheduleList.mqttWrites)))
       )
-
-      for {
-        _ <- publish(
-          MqttMessage(
-            s"$device/set",
-            ByteString(s"""{"schedule_group_to_edit":$activeGroup}""")
-          )
-        )
-
-        _ <- Future.successful(Thread.sleep(500))
-
-        _ <- publish(
-          MqttMessage(
-            s"$device/set",
-            ByteString(Json.stringify(Json.toJson(schedule)(using TrvScheduleList.mqttWrites)))
-          )
-        )
-      } yield Done
-    } else Future.successful(Done)
+    )
   }
 
   @SuppressWarnings(Array("org.wartremover.warts.ToString"))
