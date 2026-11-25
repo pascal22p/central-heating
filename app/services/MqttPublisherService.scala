@@ -129,7 +129,6 @@ class MqttPublisherService @Inject() (
     )
   }
 
-  @SuppressWarnings(Array("org.wartremover.warts.ThreadSleep"))
   def updateTrvSchedule(
       device: String,
       schedule: TrvScheduleList

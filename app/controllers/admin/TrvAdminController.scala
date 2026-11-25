@@ -42,7 +42,6 @@ final class TrvAdminController @Inject() (
           Future.successful(NotFound("Unknown TRV"))
 
         case Some(name) =>
-          println(name)
           devicesQueries.getTrv(name).flatMap {
             case None =>
               Future.successful(

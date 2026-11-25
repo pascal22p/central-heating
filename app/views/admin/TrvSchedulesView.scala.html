@@ -46,7 +46,10 @@
 
 @main(title = "TRV schedules") {
 
-  <form method="get" action="@controllers.admin.routes.TrvAdminController.showSchedules(None).url">
+  @helper.form(
+    action = controllers.admin.routes.TrvAdminController.showSchedules(None),
+    Symbol("method") -> "get"
+  ) {
     @govukSelect(Select(
       id = "device",
       name = "device",
@@ -69,7 +72,7 @@
       content = Text("View schedule"),
       inputType = Some("submit")
     ))
-  </form>
+  }
 
   @for(device <- selectedDevice) {
     <h2 class="govuk-heading-m">@device</h2>
