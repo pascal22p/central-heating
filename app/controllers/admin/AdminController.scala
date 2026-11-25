@@ -3,21 +3,20 @@ package controllers.admin
 import javax.inject.{ Inject, Singleton }
 import play.api.i18n.I18nSupport
 import play.api.mvc.*
-import play.api.Logging
-import scala.concurrent.Future
 
 import actions.AuthJourney
+import views.html.admin.AdminHomeView
 
 @Singleton
-class AdminController @Inject() (
+final class AdminController @Inject() (
     authJourney: AuthJourney,
-    val controllerComponents: ControllerComponents
+    val controllerComponents: ControllerComponents,
+    adminHomeView: AdminHomeView
 ) extends BaseController
-    with I18nSupport
-    with Logging {
+    with I18nSupport {
 
-  def index: Action[AnyContent] = authJourney.authWithAdminRight.async { implicit request =>
-    Future.successful(Ok(""))
-  }
-
+  def index: Action[AnyContent] =
+    authJourney.authWithAdminRight { implicit request =>
+      Ok(adminHomeView())
+    }
 }

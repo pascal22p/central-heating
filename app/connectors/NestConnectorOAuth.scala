@@ -26,7 +26,10 @@ class NestConnectorOAuth @Inject() (
     extends Logging {
 
   private val scope =
-    "https://www.googleapis.com/auth/sdm.service"
+    Seq(
+      "https://www.googleapis.com/auth/sdm.service",
+      "https://www.googleapis.com/auth/pubsub"
+    ).mkString(" ")
 
   @volatile private var token: Option[NestToken] = None
 

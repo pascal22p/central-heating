@@ -45,7 +45,7 @@ class MqttMessageHandlerService @Inject() (
           _             <- heatingControlService.onTrvUpdate(trv)
           _             <- mqttActionsService.checkExternalSensor(trv)
           _             <- mqttActionsService.enforceSystemMode(trv)
-          _             <- mqttActionsService.enforceTrvSchedule(trv)
+          _             <- mqttActionsService.checkTrvSchedule(trv)
           _             <- mqttActionsService.checkTrvOverheating(trv)
         } yield ()
       }
