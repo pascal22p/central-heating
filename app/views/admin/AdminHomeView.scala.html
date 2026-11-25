@@ -1,0 +1,72 @@
+
+@this(main: Main)
+
+@()(implicit authenticatedRequest: AuthenticatedRequest[?], messages: Messages)
+
+@main(title = "Administration") {
+
+  <p class="govuk-body">
+    Manage the heating system and its configuration.
+  </p>
+
+  <h2 class="govuk-heading-m">Heating schedules</h2>
+
+  <ul class="govuk-list govuk-list--spaced">
+    <li>
+      <a class="govuk-link"
+         href="@controllers.admin.routes.ScheduleController.showSchedules.url">
+        Manage heating schedules
+      </a>
+      <p class="govuk-body">
+        Create and edit the schedules used to configure the heating.
+      </p>
+    </li>
+    <li>
+      <a class="govuk-link" href="@controllers.admin.routes.TrvAdminController.showSchedules(None).url">
+        Update TRV schedules
+      </a>
+      <p class="govuk-body">
+        Compare the schedules reported by TRVs with their expected
+        schedules and manually send schedule updates.
+      </p>
+    </li>
+  </ul>
+
+  <h2 class="govuk-heading-m">Nest</h2>
+
+  <ul class="govuk-list govuk-list--spaced">
+    <li>
+      <a class="govuk-link"
+         href="@controllers.admin.routes.NestAdminController.authorize().url">
+        Authorise Nest
+      </a>
+      <p class="govuk-body">
+        Configure the Nest integration and authorise access to the
+        thermostat.
+      </p>
+    </li>
+    <li>
+      <a class="govuk-link"
+         href="@controllers.routes.NestController.index().url">
+        View Nest
+      </a>
+      <p class="govuk-body">
+        View the current thermostat state.
+      </p>
+    </li>
+  </ul>
+
+  <h2 class="govuk-heading-m">Monitoring and integrations</h2>
+
+  <ul class="govuk-list govuk-list--spaced">
+    <li>
+      <a class="govuk-link"
+         href="@controllers.admin.routes.GraphiteController.pushNest.url">
+        Push Nest data to Graphite
+      </a>
+      <p class="govuk-body">
+        Manually send the current Nest device data to Graphite.
+      </p>
+    </li>
+  </ul>
+}

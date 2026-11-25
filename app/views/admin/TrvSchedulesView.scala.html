@@ -1,0 +1,142 @@
+
+@import models.HeatingSchedule
+@import models.HeatingScheduleTransition
+@import uk.gov.hmrc.govukfrontend.views.html.components._
+
+@this(
+  main: Main,
+  govukTable: GovukTable,
+  govukSelect: GovukSelect,
+  govukButton: GovukButton,
+  govukTag: GovukTag,
+  govukInsetText: GovukInsetText
+)
+
+@(
+  devices: Seq[String],
+  selectedDevice: Option[String],
+  currentSchedule: Option[HeatingSchedule],
+  expectedSchedule: Option[HeatingSchedule]
+)(implicit authenticatedRequest: AuthenticatedRequest[?], messages: Messages)
+
+@temperatureLabel(t: HeatingScheduleTransition) = @{
+  BigDecimal(t.temperature).bigDecimal.stripTrailingZeros.toPlainString + "°C"
+}
+
+@transitionsTable(caption: String, transitions: Seq[HeatingScheduleTransition]) = {
+  @govukTable(Table(
+    caption = Some(caption),
+    captionClasses = "govuk-table__caption--s",
+    firstCellIsHeader = true,
+    head = Some(Seq(
+      HeadCell(content = Text("From")),
+      HeadCell(content = Text("Until")),
+      HeadCell(content = Text("Temperature"), format = Some("numeric"))
+    )),
+    rows = transitions.zipWithIndex.map { (t, i) =>
+      val until = transitions.lift(i + 1).map(_.start.toString).getOrElse("24:00")
+      Seq(
+        TableRow(content = Text(t.start.toString)),
+        TableRow(content = Text(until)),
+        TableRow(content = Text(temperatureLabel(t)), format = Some("numeric"))
+      )
+    }
+  ))
+}
+
+@main(title = "TRV schedules") {
+
+  @helper.form(
+    action = controllers.admin.routes.TrvAdminController.showSchedules(None),
+    Symbol("method") -> "get"
+  ) {
+    @govukSelect(Select(
+      id = "device",
+      name = "device",
+      label = Label(content = Text("Select a TRV")),
+      items = Seq(
+        SelectItem(
+          value = Some(""),
+          text = "Select a device"
+        )
+      ) ++ devices.map { device =>
+        SelectItem(
+          value = Some(device),
+          text = device
+        )
+      },
+      value = selectedDevice
+    ))
+
+    @govukButton(Button(
+      content = Text("View schedule"),
+      inputType = Some("submit")
+    ))
+  }
+
+  @for(device <- selectedDevice) {
+    <h2 class="govuk-heading-m">@device</h2>
+
+    @if(currentSchedule.isEmpty) {
+      @govukInsetText(InsetText(
+        content = Text(
+          "No current TRV schedule is available. The device may not have reported recently."
+        )
+      ))
+    }
+
+    @if(expectedSchedule.isEmpty) {
+      @govukInsetText(InsetText(
+        content = Text(
+          "No expected schedule is configured for this device's active schedule group."
+        )
+      ))
+    }
+
+    @for(current <- currentSchedule; expected <- expectedSchedule) {
+      @if(current.weekdays == expected.weekdays && current.weekend == expected.weekend) {
+        <p class="govuk-body">
+          @govukTag(Tag(
+            content = Text("Schedules match"),
+            classes = "govuk-tag--green"
+          ))
+        </p>
+      } else {
+        <p class="govuk-body">
+          @govukTag(Tag(
+            content = Text("Schedule mismatch"),
+            classes = "govuk-tag--red"
+          ))
+        </p>
+      }
+
+      <div class="govuk-grid-row">
+        <div class="govuk-grid-column-one-half">
+          <h3 class="govuk-heading-s">Current device schedule</h3>
+          @transitionsTable("Weekdays", current.weekdays)
+          @transitionsTable("Weekend", current.weekend)
+        </div>
+
+        <div class="govuk-grid-column-one-half">
+          <h3 class="govuk-heading-s">Expected schedule</h3>
+          @transitionsTable("Weekdays", expected.weekdays)
+          @transitionsTable("Weekend", expected.weekend)
+        </div>
+      </div>
+    }
+
+    @if(expectedSchedule.isDefined) {
+      @helper.form(
+        action = controllers.admin.routes.TrvAdminController.updateSchedule(device)
+      ) {
+        @helper.CSRF.formField(authenticatedRequest.request)
+
+        @govukButton(Button(
+          content = Text("Update device schedule"),
+          inputType = Some("submit"),
+          classes = "govuk-button--warning"
+        ))
+      }
+    }
+  }
+}

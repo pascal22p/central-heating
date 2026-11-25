@@ -5,6 +5,10 @@ GET     /nest/authorize        controllers.admin.NestAdminController.authorize()
 GET     /nest/oauth/callback   controllers.admin.NestAdminController.oauthCallback(code: String, state: String)
 GET     /nest/set/temperature/:temperature controllers.admin.NestAdminController.setTemperature(temperature: Double)
 
+GET   /trvs/schedules                 controllers.admin.TrvAdminController.showSchedules(device: Option[String])
+POST  /trvs/:device/schedule/update   controllers.admin.TrvAdminController.updateSchedule(device: String)
+GET   /trvs/:device/schedule/update-sent   controllers.admin.TrvAdminController.scheduleUpdateSent(device: String)
+
 GET     /graphite/nest    controllers.admin.GraphiteController.pushNest
 
 GET   /schedules         controllers.admin.ScheduleController.showSchedules
