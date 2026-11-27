@@ -113,7 +113,7 @@ object Trv {
 
         openWindowDetected <-
           (json \ "open_window_detected")
-            .validate[Boolean]
+            .validateOpt[Boolean]
 
         childLockValue <-
           (json \ "child_lock").validate[String]
@@ -170,7 +170,7 @@ object Trv {
               s"Unknown temperature_sensor_select: $value"
             )
         },
-        openWindowDetected = openWindowDetected,
+        openWindowDetected = openWindowDetected.getOrElse(false),
         childLock = childLockValue match {
           case "LOCK"   => ChildLock.Locked
           case "UNLOCK" => ChildLock.Unlocked
